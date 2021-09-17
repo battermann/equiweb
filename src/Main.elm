@@ -197,6 +197,7 @@ sendSimulationRequest request =
                 (Maybe.Extra.toList (request.board |> Maybe.map (Url.Builder.string "board"))
                     ++ [ Url.Builder.string "range1" request.range1
                        , Url.Builder.string "range2" request.range2
+                       , Url.Builder.string "stdev_target" "0.001"
                        ]
                 )
         }
@@ -232,7 +233,7 @@ calculatorView model =
         [ Grid.col []
             [ Card.deck
                 [ Card.config []
-                    |> Card.headerH4 [] [ Html.text "Poker Equity Calculator" ]
+                    |> Card.headerH4 [] [ Html.text "NLHE Poker Equity Calculator" ]
                     |> Card.block []
                         [ Block.custom <|
                             case model.currentSimulationResult of
