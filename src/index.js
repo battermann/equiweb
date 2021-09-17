@@ -1,5 +1,6 @@
 import 'bootstrap/dist/css/bootstrap.min.css'
 // import 'bootswatch/dist/darkly/bootstrap.min.css'
+import './main.css'
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
 

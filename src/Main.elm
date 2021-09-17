@@ -232,7 +232,7 @@ calculatorView model =
         [ Grid.col []
             [ Card.deck
                 [ Card.config []
-                    |> Card.headerH4 [] [ Html.text "Equity Calculator" ]
+                    |> Card.headerH4 [] [ Html.text "Poker Equity Calculator" ]
                     |> Card.block []
                         [ Block.custom <|
                             case model.currentSimulationResult of
@@ -382,7 +382,7 @@ inputFormView model =
                     , Button.attrs [ Size.w100 ]
                     , Button.onClick SimulationRequestSend
                     ]
-                    [ Html.text "Run Simulation" ]
+                    [ Html.text "Run" ]
                 ]
             ]
         ]
