@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
 import Bootstrap.Card.Block as Block
@@ -92,7 +93,9 @@ initialForm =
 
 
 type alias ResultLine =
-    { range : String, equity : Float }
+    { range : String
+    , equity : Float
+    }
 
 
 type alias Model =
@@ -235,6 +238,12 @@ calculatorView model =
                             case model.currentSimulationResult of
                                 RemoteData.Loading ->
                                     loadingView
+
+                                RemoteData.Failure _ ->
+                                    Html.div []
+                                        [ Alert.simpleDanger [] [ Html.text "Something went wrong. Please try again." ]
+                                        , inputFormView model
+                                        ]
 
                                 _ ->
                                     inputFormView model
