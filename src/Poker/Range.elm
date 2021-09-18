@@ -15,3 +15,4 @@ rewrite rangeString =
         |> Result.Extra.combine
         |> Result.map (List.concat >> List.intersperse "," >> String.concat)
         |> Result.Extra.mapBoth (Parser.deadEndsToString >> List.singleton) identity
+        |> Result.Extra.filter [ "Range should not be empty" ] (String.isEmpty >> not)

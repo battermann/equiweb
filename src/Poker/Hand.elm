@@ -82,9 +82,9 @@ offsuit r1 r2 =
 parser : Parser (List Hand)
 parser =
     Parser.oneOf
-        [ Parser.backtrackable rangeParser
-        , Parser.backtrackable rangePlusParser
-        , singleHandParser
+        [ Parser.backtrackable rangeParser |. Parser.end
+        , Parser.backtrackable rangePlusParser |. Parser.end
+        , singleHandParser |. Parser.end
         ]
 
 

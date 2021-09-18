@@ -23,8 +23,11 @@ import Json.Decode as Decode
 import Json.Decode.Pipeline as P
 import List.Extra
 import Maybe.Extra
+import Poker.Board as Board
+import Poker.Card as Card exposing (Card)
 import Poker.Range as Range
 import RemoteData exposing (WebData)
+import Result.Extra
 import Round
 import Url.Builder
 
@@ -51,17 +54,13 @@ type Position
 type alias SimulationRequestForm =
     { utg : Form.Field String
     , mp : Form.Field String
-    , board : Form.Field (Maybe String)
+    , board : Form.Field (List Card)
     }
 
 
 setBoard : String -> SimulationRequestForm -> SimulationRequestForm
 setBoard board form =
-    if String.isEmpty board then
-        { form | board = form.board |> Form.setValue (always (Ok Nothing)) board }
-
-    else
-        { form | board = form.board |> Form.setValue (always (Ok (Just board))) board }
+    { form | board = form.board |> Form.setValue Board.validate board }
 
 
 setRange : Position -> String -> SimulationRequestForm -> SimulationRequestForm
@@ -88,9 +87,27 @@ setRange position range form =
 
 initialForm : SimulationRequestForm
 initialForm =
-    { utg = { name = "UTG", value = "", validated = Ok "" }
-    , mp = { name = "MP", value = "", validated = Ok "" }
-    , board = { name = "Board", value = "", validated = Ok Nothing }
+    { utg = { name = "UTG", value = "", validated = Range.rewrite "", edited = False }
+    , mp = { name = "MP", value = "", validated = Range.rewrite "", edited = False }
+    , board = { name = "Board", value = "", validated = Ok [], edited = False }
+    }
+
+
+isFormValid : SimulationRequestForm -> Bool
+isFormValid form =
+    Ok SimulationRequest
+        |> Form.apply form.board.validated
+        |> Form.apply form.utg.validated
+        |> Form.apply form.mp.validated
+        |> Result.Extra.isOk
+
+
+setAllFormFieldsToEdited : SimulationRequestForm -> SimulationRequestForm
+setAllFormFieldsToEdited form =
+    { form
+        | utg = form.utg |> Form.setEdited
+        , mp = form.mp |> Form.setEdited
+        , board = form.board |> Form.setEdited
     }
 
 
@@ -156,10 +173,15 @@ update msg model =
             in
             case validatedRequest of
                 Ok req ->
-                    ( { model | currentSimulationResult = RemoteData.Loading }, sendSimulationRequest req )
+                    ( { model
+                        | currentSimulationResult = RemoteData.Loading
+                        , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+                      }
+                    , sendSimulationRequest req
+                    )
 
                 Err _ ->
-                    ( model, Cmd.none )
+                    ( { model | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm }, Cmd.none )
 
         RangeInput position str ->
             ( { model | simulationRequestForm = setRange position str model.simulationRequestForm }, Cmd.none )
@@ -197,7 +219,7 @@ update msg model =
 
 
 type alias SimulationRequest =
-    { board : Maybe String
+    { board : List Card
     , range1 : String
     , range2 : String
     }
@@ -221,12 +243,11 @@ sendSimulationRequest request =
         , url =
             Url.Builder.crossOrigin "https://safe-shore-53897.herokuapp.com"
                 [ "simulation" ]
-                (Maybe.Extra.toList (request.board |> Maybe.map (Url.Builder.string "board"))
-                    ++ [ Url.Builder.string "range1" request.range1
-                       , Url.Builder.string "range2" request.range2
-                       , Url.Builder.string "stdev_target" "0.001"
-                       ]
-                )
+                [ Url.Builder.string "range1" request.range1
+                , Url.Builder.string "range2" request.range2
+                , Url.Builder.string "board" (request.board |> List.map Card.toString |> String.concat)
+                , Url.Builder.string "stdev_target" "0.001"
+                ]
         }
 
 
@@ -343,6 +364,29 @@ handRangePlaceholder =
     "Hand Range (e.g. QQ+, AK)"
 
 
+validationFeedbackOutline : Form.Field a -> List (Input.Option msg)
+validationFeedbackOutline field =
+    case ( field.validated, field.edited ) of
+        ( Ok _, True ) ->
+            [ Input.success ]
+
+        ( Err _, True ) ->
+            [ Input.danger ]
+
+        _ ->
+            []
+
+
+validationFeedbackText : Form.Field a -> List (Html msg)
+validationFeedbackText field =
+    case ( field.validated, field.edited ) of
+        ( Err errs, True ) ->
+            [ Form.invalidFeedback [] (errs |> List.map Html.text) ]
+
+        _ ->
+            []
+
+
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
@@ -352,10 +396,12 @@ inputFormView model =
                     [ Form.label [] [ Html.text model.simulationRequestForm.utg.name ]
                     , InputGroup.config
                         (InputGroup.text
-                            [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                            , Input.value model.simulationRequestForm.utg.value
-                            , Input.onInput (RangeInput UTG)
-                            ]
+                            (validationFeedbackOutline model.simulationRequestForm.utg
+                                ++ [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
+                                   , Input.value model.simulationRequestForm.utg.value
+                                   , Input.onInput (RangeInput UTG)
+                                   ]
+                            )
                         )
                         |> InputGroup.successors
                             [ InputGroup.button
@@ -385,10 +431,12 @@ inputFormView model =
                     [ Form.label [] [ Html.text model.simulationRequestForm.mp.name ]
                     , InputGroup.config
                         (InputGroup.text
-                            [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                            , Input.value model.simulationRequestForm.mp.value
-                            , Input.onInput (RangeInput MP)
-                            ]
+                            (validationFeedbackOutline model.simulationRequestForm.mp
+                                ++ [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
+                                   , Input.value model.simulationRequestForm.mp.value
+                                   , Input.onInput (RangeInput MP)
+                                   ]
+                            )
                         )
                         |> InputGroup.successors
                             [ InputGroup.button
@@ -414,10 +462,12 @@ inputFormView model =
                 [ Form.group []
                     [ Form.label [] [ Html.text model.simulationRequestForm.board.name ]
                     , Input.text
-                        [ Input.attrs [ Html.Attributes.placeholder "Board (e.g. 3h4h4c)" ]
-                        , Input.value model.simulationRequestForm.board.value
-                        , Input.onInput BoardInput
-                        ]
+                        (validationFeedbackOutline model.simulationRequestForm.board
+                            ++ [ Input.attrs [ Html.Attributes.placeholder "Board (e.g. 3h4h4c)" ]
+                               , Input.value model.simulationRequestForm.board.value
+                               , Input.onInput BoardInput
+                               ]
+                        )
                     ]
                 ]
             ]

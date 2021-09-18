@@ -1,4 +1,4 @@
-module Form exposing (Field, Validated, apply, rewrite, setValue)
+module Form exposing (Field, Validated, apply, rewrite, setEdited, setValue)
 
 
 type alias Error =
@@ -13,6 +13,7 @@ type alias Field a =
     { name : String
     , value : String
     , validated : Validated a
+    , edited : Bool
     }
 
 
@@ -28,7 +29,12 @@ rewrite field toString =
 
 setValue : (String -> Validated a) -> String -> Field a -> Field a
 setValue f value field =
-    { field | value = value, validated = f value }
+    { field | value = value, validated = f value, edited = True }
+
+
+setEdited : Field a -> Field a
+setEdited field =
+    { field | edited = True }
 
 
 apply : Validated a -> Validated (a -> b) -> Validated b

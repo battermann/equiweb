@@ -2,7 +2,7 @@ module Poker.Combo exposing (Combo, all, combo, parser, toString)
 
 import List.Extra
 import Maybe.Extra
-import Parser exposing ((|=))
+import Parser exposing ((|.), (|=))
 import Poker.Card as Card exposing (Card)
 import Poker.Rank as Rank
 import Poker.Suit as Suit
@@ -64,4 +64,5 @@ parser =
         (Parser.succeed combo
             |= Card.parser
             |= Card.parser
+            |. Parser.end
         )
