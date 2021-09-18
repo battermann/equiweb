@@ -6,6 +6,7 @@ import Bootstrap.Card as Card
 import Bootstrap.Card.Block as Block
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
+import Bootstrap.Form.InputGroup as InputGroup
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
@@ -22,6 +23,7 @@ import Json.Decode as Decode
 import Json.Decode.Pipeline as P
 import List.Extra
 import Maybe.Extra
+import Poker.Range as Range
 import RemoteData exposing (WebData)
 import Round
 import Url.Builder
@@ -66,10 +68,10 @@ setRange : Position -> String -> SimulationRequestForm -> SimulationRequestForm
 setRange position range form =
     case position of
         UTG ->
-            { form | utg = form.utg |> Form.setValue (always (Ok (String.replace " " "" range))) range }
+            { form | utg = form.utg |> Form.setValue Range.rewrite range }
 
         MP ->
-            { form | mp = form.mp |> Form.setValue (always (Ok (String.replace " " "" range))) range }
+            { form | mp = form.mp |> Form.setValue Range.rewrite range }
 
         CO ->
             form
@@ -128,6 +130,7 @@ type Msg
     | SimulationResultReceived (WebData SimulationResult)
     | RangeInput Position String
     | BoardInput String
+    | RewriteRange Position
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -163,6 +166,30 @@ update msg model =
 
         BoardInput str ->
             ( { model | simulationRequestForm = setBoard str model.simulationRequestForm }, Cmd.none )
+
+        RewriteRange position ->
+            let
+                form =
+                    model.simulationRequestForm
+            in
+            case position of
+                UTG ->
+                    ( { model | simulationRequestForm = { form | utg = Form.rewrite form.utg identity } }, Cmd.none )
+
+                MP ->
+                    ( { model | simulationRequestForm = { form | mp = Form.rewrite form.mp identity } }, Cmd.none )
+
+                CO ->
+                    ( model, Cmd.none )
+
+                BU ->
+                    ( model, Cmd.none )
+
+                SB ->
+                    ( model, Cmd.none )
+
+                BB ->
+                    ( model, Cmd.none )
 
 
 
@@ -233,7 +260,7 @@ calculatorView model =
         [ Grid.col []
             [ Card.deck
                 [ Card.config []
-                    |> Card.headerH4 [] [ Html.text "NLHE Poker Equity Calculator" ]
+                    |> Card.headerH4 [] [ Html.text "Equiweb" ]
                     |> Card.block []
                         [ Block.custom <|
                             case model.currentSimulationResult of
@@ -323,11 +350,22 @@ inputFormView model =
             [ Form.col []
                 [ Form.group []
                     [ Form.label [] [ Html.text model.simulationRequestForm.utg.name ]
-                    , Input.text
-                        [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                        , Input.value model.simulationRequestForm.utg.value
-                        , Input.onInput (RangeInput UTG)
-                        ]
+                    , InputGroup.config
+                        (InputGroup.text
+                            [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
+                            , Input.value model.simulationRequestForm.utg.value
+                            , Input.onInput (RangeInput UTG)
+                            ]
+                        )
+                        |> InputGroup.successors
+                            [ InputGroup.button
+                                [ Button.outlineSecondary
+                                , Button.onClick (RewriteRange UTG)
+                                , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                ]
+                                [ Html.text "Rewrite" ]
+                            ]
+                        |> InputGroup.view
                     ]
                 ]
             , Form.col [ Col.sm2 ]
@@ -345,11 +383,22 @@ inputFormView model =
             [ Form.col []
                 [ Form.group []
                     [ Form.label [] [ Html.text model.simulationRequestForm.mp.name ]
-                    , Input.text
-                        [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                        , Input.value model.simulationRequestForm.mp.value
-                        , Input.onInput (RangeInput MP)
-                        ]
+                    , InputGroup.config
+                        (InputGroup.text
+                            [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
+                            , Input.value model.simulationRequestForm.mp.value
+                            , Input.onInput (RangeInput MP)
+                            ]
+                        )
+                        |> InputGroup.successors
+                            [ InputGroup.button
+                                [ Button.outlineSecondary
+                                , Button.onClick (RewriteRange MP)
+                                , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                ]
+                                [ Html.text "Rewrite" ]
+                            ]
+                        |> InputGroup.view
                     ]
                 ]
             , Form.col [ Col.sm2 ]

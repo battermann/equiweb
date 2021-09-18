@@ -19,6 +19,7 @@ jobs:
 
       - run: npm install -g create-elm-app
       - run: npm install --production
+      - run: elm-app test
       - run: elm-app build
       - run: npm install -g surge
       - run: surge ./build/ ${{ secrets.SURGE_DOMAIN }} --token ${{ secrets.SURGE_TOKEN }}

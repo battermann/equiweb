@@ -1,4 +1,4 @@
-module Form exposing (Field, Validated, apply, setValue)
+module Form exposing (Field, Validated, apply, rewrite, setValue)
 
 
 type alias Error =
@@ -14,6 +14,16 @@ type alias Field a =
     , value : String
     , validated : Validated a
     }
+
+
+rewrite : Field a -> (a -> String) -> Field a
+rewrite field toString =
+    case field.validated of
+        Ok v ->
+            { field | value = toString v }
+
+        _ ->
+            field
 
 
 setValue : (String -> Validated a) -> String -> Field a -> Field a
