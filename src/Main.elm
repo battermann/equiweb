@@ -167,6 +167,7 @@ type Msg
     | CloseBoardSelectModal
     | ToggleBoardSelection Card
     | ConfirmBoardSelection
+    | Reset
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -334,6 +335,9 @@ update msg model =
               }
             , Cmd.none
             )
+
+        Reset ->
+            ( init, Cmd.none )
 
 
 
@@ -575,12 +579,20 @@ inputFormView model =
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
-                [ Button.button
-                    [ Button.success
-                    , Button.attrs [ Size.w100 ]
-                    , Button.onClick SimulationRequestSend
+                [ Html.div [ Flex.block, Flex.row ]
+                    [ Button.button
+                        [ Button.light
+                        , Button.attrs [ Size.w100, Html.Attributes.style "margin-right" "2px" ]
+                        , Button.onClick Reset
+                        ]
+                        [ Html.text "CLEAR ALL" ]
+                    , Button.button
+                        [ Button.success
+                        , Button.attrs [ Size.w100, Html.Attributes.style "margin-left" "2px" ]
+                        , Button.onClick SimulationRequestSend
+                        ]
+                        [ Html.text "RUN" ]
                     ]
-                    [ Html.text "Run" ]
                 ]
             ]
         ]
@@ -676,7 +688,6 @@ modalView model =
                             , Flex.row
                             , Flex.justifyCenter
                             , Flex.alignItemsCenter
-                            , Spacing.mb1
                             ]
                             (Rank.all
                                 |> List.reverse
@@ -688,6 +699,7 @@ modalView model =
                                             , Flex.justifyAround
                                             , Flex.alignItemsCenter
                                             , Html.Attributes.style "user-select" "none"
+                                            , Html.Attributes.style "margin" "1px"
                                             ]
                                             [ Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardOpacity model card) "pointer" "6vmin" card) ]
                                     )
