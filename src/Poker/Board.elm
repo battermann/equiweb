@@ -1,15 +1,20 @@
 module Poker.Board exposing (parser, validate)
 
 import List.Extra
-import Parser exposing ((|.), (|=), Parser)
+import Parser exposing ((|.), (|=), DeadEnd, Parser)
 import Poker.Card as Card exposing (Card)
 import Result.Extra
+
+
+errorsToString : List DeadEnd -> List String
+errorsToString _ =
+    [ "Range not valid" ]
 
 
 validate : String -> Result (List String) (List Card)
 validate board =
     Parser.run parser (board |> String.replace " " "")
-        |> Result.Extra.mapBoth (Parser.deadEndsToString >> List.singleton) identity
+        |> Result.Extra.mapBoth errorsToString identity
         |> Result.Extra.filter [ "The same card cannot appear multiple times" ]
             (\xs ->
                 List.Extra.unique xs == xs

@@ -281,7 +281,12 @@ calculatorView model =
         [ Grid.col []
             [ Card.deck
                 [ Card.config []
-                    |> Card.headerH4 [] [ Html.text "Equiweb" ]
+                    |> Card.headerH2 []
+                        [ Html.div [ Flex.block, Flex.row, Flex.alignItemsStart ]
+                            [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
+                            , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
+                            ]
+                        ]
                     |> Card.block []
                         [ Block.custom <|
                             case model.currentSimulationResult of
