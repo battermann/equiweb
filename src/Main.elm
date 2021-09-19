@@ -10,6 +10,7 @@ import Bootstrap.Form.InputGroup as InputGroup
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
+import Bootstrap.Modal as Modal
 import Bootstrap.Spinner as Spinner
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
@@ -18,18 +19,16 @@ import Browser
 import Form
 import Html exposing (Html)
 import Html.Attributes
+import Html.Events
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline as P
-import List.Extra
-import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.Range as Range
-import Poker.Rank as Rank exposing (Rank)
-import Poker.Suit exposing (Suit(..))
+import Poker.Rank as Rank
+import Poker.Suit as Suit exposing (Suit(..))
 import RemoteData exposing (WebData)
-import Result.Extra
 import Round
 import Svg
 import Svg.Attributes
@@ -97,15 +96,6 @@ initialForm =
     }
 
 
-isFormValid : SimulationRequestForm -> Bool
-isFormValid form =
-    Ok SimulationRequest
-        |> Form.apply form.board.validated
-        |> Form.apply form.utg.validated
-        |> Form.apply form.mp.validated
-        |> Result.Extra.isOk
-
-
 setAllFormFieldsToEdited : SimulationRequestForm -> SimulationRequestForm
 setAllFormFieldsToEdited form =
     { form
@@ -125,6 +115,8 @@ type alias Model =
     { simulationRequestForm : SimulationRequestForm
     , currentSimulationResult : WebData SimulationResult
     , results : List (List ResultLine)
+    , boardSelectModalVisibility : Modal.Visibility
+    , boardSelection : List Card
     }
 
 
@@ -143,6 +135,8 @@ init =
     { simulationRequestForm = initialForm
     , currentSimulationResult = RemoteData.NotAsked
     , results = []
+    , boardSelectModalVisibility = Modal.hidden
+    , boardSelection = []
     }
 
 
@@ -152,6 +146,10 @@ type Msg
     | RangeInput Position String
     | BoardInput String
     | RewriteRange Position
+    | ShowBoardSelectModal
+    | CloseBoardSelectModal
+    | ToggleBoardSelection Card
+    | ConfirmBoardSelection
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -217,6 +215,34 @@ update msg model =
                 BB ->
                     ( model, Cmd.none )
 
+        CloseBoardSelectModal ->
+            ( { model | boardSelectModalVisibility = Modal.hidden }
+            , Cmd.none
+            )
+
+        ShowBoardSelectModal ->
+            ( { model | boardSelectModalVisibility = Modal.shown, boardSelection = model.simulationRequestForm.board.validated |> Result.withDefault [] }
+            , Cmd.none
+            )
+
+        ToggleBoardSelection card ->
+            if model.boardSelection |> List.member card then
+                ( { model | boardSelection = model.boardSelection |> List.filter ((/=) card) }, Cmd.none )
+
+            else if (model.boardSelection |> List.length) < 5 then
+                ( { model | boardSelection = card :: model.boardSelection }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
+        ConfirmBoardSelection ->
+            ( { model
+                | boardSelectModalVisibility = Modal.hidden
+                , simulationRequestForm = setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.simulationRequestForm
+              }
+            , Cmd.none
+            )
+
 
 
 ---- HTTP ----
@@ -265,6 +291,7 @@ view model =
     , body =
         [ Html.div []
             [ calculatorView model
+            , modalView model
             ]
         ]
     }
@@ -358,16 +385,6 @@ equityValueView position model =
             Input.value (Round.round 2 (100 * value) ++ " %")
 
 
-cardToImage : String -> String
-cardToImage str =
-    String.concat [ "images/", String.toUpper str, ".svg" ]
-
-
-boardToImages : String -> List String
-boardToImages =
-    String.toList >> List.Extra.groupsOf 2 >> List.map (String.fromList >> cardToImage)
-
-
 handRangePlaceholder : String
 handRangePlaceholder =
     "Hand Range (e.g. QQ+, AK)"
@@ -386,19 +403,12 @@ validationFeedbackOutline field =
             []
 
 
-validationFeedbackText : Form.Field a -> List (Html msg)
-validationFeedbackText field =
-    case ( field.validated, field.edited ) of
-        ( Err errs, True ) ->
-            [ Form.invalidFeedback [] (errs |> List.map Html.text) ]
-
-        _ ->
-            []
-
-
-cardView : Float -> Card -> Html Msg
-cardView width card =
+cardView : Maybe Msg -> String -> String -> String -> Card -> Html Msg
+cardView msg opacity cursor refWidth card =
     let
+        width =
+            60
+
         height =
             width * 7.0 / 5.0
 
@@ -416,29 +426,41 @@ cardView width card =
                 Diamond ->
                     "royalblue"
     in
-    Svg.svg
-        [ Svg.Attributes.width ((width + 1) |> String.fromFloat)
-        , Svg.Attributes.height ((height + 1) |> String.fromFloat)
-        , Svg.Attributes.viewBox ("0 0" ++ " " ++ ((width + 1) |> String.fromFloat) ++ " " ++ ((height + 1) |> String.fromFloat))
-        ]
-        [ Svg.rect
-            [ Svg.Attributes.x "1"
-            , Svg.Attributes.y "1"
-            , Svg.Attributes.width (width |> String.fromFloat)
-            , Svg.Attributes.height (height |> String.fromFloat)
-            , Svg.Attributes.rx ((width / 4) |> String.fromFloat)
-            , Svg.Attributes.ry ((width / 4) |> String.fromFloat)
-            , Svg.Attributes.fill color
+    Html.div
+        ([ Html.Attributes.style "width" refWidth
+         , Html.Attributes.style "min-height" "40px"
+         , Html.Attributes.style "min-width" "29px"
+         , Html.Attributes.style "max-height" "80px"
+         , Html.Attributes.style "max-width" "57px"
+         , Html.Attributes.style "cursor" cursor
+         , Html.Attributes.style "opacity" opacity
+         ]
+            ++ (msg |> Maybe.map (Html.Events.onClick >> List.singleton) |> Maybe.withDefault [])
+        )
+        [ Svg.svg
+            [ Svg.Attributes.width "100%"
+            , Svg.Attributes.height "100%"
+            , Svg.Attributes.viewBox ("0 0" ++ " " ++ ((width + 1) |> String.fromFloat) ++ " " ++ ((height + 1) |> String.fromFloat))
             ]
-            []
-        , Svg.text_
-            [ Svg.Attributes.x ((width * 0.1) |> String.fromFloat)
-            , Svg.Attributes.y ((width * 1.2) |> String.fromFloat)
-            , Svg.Attributes.fill "white"
-            , Svg.Attributes.fontSize (width * 1.2 |> String.fromFloat)
-            , Svg.Attributes.fontFamily "monospace"
+            [ Svg.rect
+                [ Svg.Attributes.x "0"
+                , Svg.Attributes.y "0"
+                , Svg.Attributes.width (width |> String.fromFloat)
+                , Svg.Attributes.height (height |> String.fromFloat)
+                , Svg.Attributes.rx ((width / 5) |> String.fromFloat)
+                , Svg.Attributes.ry ((width / 5) |> String.fromFloat)
+                , Svg.Attributes.fill color
+                ]
+                []
+            , Svg.text_
+                [ Svg.Attributes.x ((width * 0.13) |> String.fromFloat)
+                , Svg.Attributes.y ((width * 1.2) |> String.fromFloat)
+                , Svg.Attributes.fill "white"
+                , Svg.Attributes.fontSize (width * 1.2 |> String.fromFloat)
+                , Svg.Attributes.fontFamily "monospace"
+                ]
+                [ Svg.text (card.rank |> Rank.toString) ]
             ]
-            [ Svg.text (card.rank |> Rank.toString) ]
         ]
 
 
@@ -516,18 +538,35 @@ inputFormView model =
             [ Form.col [ Col.sm10 ]
                 [ Form.group []
                     [ Form.label [] [ Html.text model.simulationRequestForm.board.name ]
-                    , Input.text
-                        (validationFeedbackOutline model.simulationRequestForm.board
-                            ++ [ Input.attrs [ Html.Attributes.placeholder "Board (e.g. 3h4h4c)" ]
-                               , Input.value model.simulationRequestForm.board.value
-                               , Input.onInput BoardInput
-                               ]
+                    , InputGroup.config
+                        (InputGroup.text
+                            (validationFeedbackOutline model.simulationRequestForm.board
+                                ++ [ Input.attrs [ Html.Attributes.placeholder "Board (e.g. 3h4h4c)" ]
+                                   , Input.value model.simulationRequestForm.board.value
+                                   , Input.onInput BoardInput
+                                   ]
+                            )
                         )
+                        |> InputGroup.successors
+                            [ InputGroup.button
+                                [ Button.outlineSecondary
+                                , Button.onClick ShowBoardSelectModal
+                                , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                ]
+                                [ Html.img [ Html.Attributes.src "images/cards-icon.svg", Html.Attributes.width 20 ] [] ]
+                            ]
+                        |> InputGroup.view
                     ]
                 ]
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
-            [ Form.col [] (model.simulationRequestForm.board.validated |> Result.withDefault [] |> List.map (cardView 40))
+            [ Form.col []
+                [ Html.div
+                    [ Flex.block
+                    , Flex.row
+                    ]
+                    (model.simulationRequestForm.board.validated |> Result.withDefault [] |> List.map (cardView Nothing "1" "default" "6vmin"))
+                ]
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
@@ -540,3 +579,74 @@ inputFormView model =
                 ]
             ]
         ]
+
+
+modalView : Model -> Html Msg
+modalView model =
+    Modal.config CloseBoardSelectModal
+        |> Modal.large
+        |> Modal.body []
+            (Suit.all
+                |> List.map
+                    (\suit ->
+                        Html.div
+                            [ Flex.block
+                            , Flex.row
+                            , Flex.justifyCenter
+                            , Flex.alignItemsCenter
+                            , Spacing.mb1
+                            ]
+                            (Rank.all
+                                |> List.reverse
+                                |> List.map
+                                    (\rank ->
+                                        Html.div
+                                            [ Flex.block
+                                            , Flex.col
+                                            , Flex.justifyAround
+                                            , Flex.alignItemsCenter
+                                            , Html.Attributes.style "user-select" "none"
+                                            ]
+                                            [ Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardOpacity model card) "pointer" "6vmin" card) ]
+                                    )
+                            )
+                    )
+            )
+        |> Modal.footer []
+            [ Button.button [ Button.light, Button.onClick CloseBoardSelectModal ] [ Html.text "Cancel" ]
+            , Button.button
+                [ Button.success
+                , Button.onClick ConfirmBoardSelection
+                , Button.disabled (isBoardSelectionValid model |> not)
+                ]
+                [ Html.text "Confirm" ]
+            ]
+        |> Modal.view model.boardSelectModalVisibility
+
+
+isBoardSelectionValid : Model -> Bool
+isBoardSelectionValid model =
+    case model.boardSelection |> List.length of
+        0 ->
+            True
+
+        3 ->
+            True
+
+        4 ->
+            True
+
+        5 ->
+            True
+
+        _ ->
+            False
+
+
+cardOpacity : Model -> Card -> String
+cardOpacity model card =
+    if model.boardSelection |> List.member card then
+        "0.3"
+
+    else
+        "1"
