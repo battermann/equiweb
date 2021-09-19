@@ -23,26 +23,18 @@ import Html.Events
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline as P
+import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.Range as Range
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
 import RemoteData exposing (WebData)
+import Result.Extra
 import Round
 import Svg
 import Svg.Attributes
 import Url.Builder
-
-
-type alias SimulationResult =
-    { equityPlayer1 : Float
-    , equityPlayer2 : Float
-    , equityPlayer3 : Maybe Float
-    , equityPlayer4 : Maybe Float
-    , equityPlayer5 : Maybe Float
-    , equityPlayer6 : Maybe Float
-    }
 
 
 type Position
@@ -57,6 +49,10 @@ type Position
 type alias SimulationRequestForm =
     { utg : Form.Field String
     , mp : Form.Field String
+    , co : Form.Field String
+    , bu : Form.Field String
+    , sb : Form.Field String
+    , bb : Form.Field String
     , board : Form.Field (List Card)
     }
 
@@ -76,22 +72,26 @@ setRange position range form =
             { form | mp = form.mp |> Form.setValue Range.rewrite range }
 
         CO ->
-            form
+            { form | co = form.co |> Form.setValue Range.rewrite range }
 
         BU ->
-            form
+            { form | bu = form.bu |> Form.setValue Range.rewrite range }
 
         SB ->
-            form
+            { form | sb = form.sb |> Form.setValue Range.rewrite range }
 
         BB ->
-            form
+            { form | bb = form.bb |> Form.setValue Range.rewrite range }
 
 
 initialForm : SimulationRequestForm
 initialForm =
     { utg = { name = "UTG", value = "", validated = Range.rewrite "", edited = False }
     , mp = { name = "MP", value = "", validated = Range.rewrite "", edited = False }
+    , co = { name = "CO", value = "", validated = Range.rewrite "", edited = False }
+    , bu = { name = "BU", value = "", validated = Range.rewrite "", edited = False }
+    , sb = { name = "SB", value = "", validated = Range.rewrite "", edited = False }
+    , bb = { name = "BB", value = "", validated = Range.rewrite "", edited = False }
     , board = { name = "Board", value = "", validated = Ok [], edited = False }
     }
 
@@ -101,6 +101,10 @@ setAllFormFieldsToEdited form =
     { form
         | utg = form.utg |> Form.setEdited
         , mp = form.mp |> Form.setEdited
+        , co = form.co |> Form.setEdited
+        , bu = form.bu |> Form.setEdited
+        , sb = form.sb |> Form.setEdited
+        , bb = form.bb |> Form.setEdited
         , board = form.board |> Form.setEdited
     }
 
@@ -111,12 +115,24 @@ type alias ResultLine =
     }
 
 
+type alias SimulationResult =
+    { board : List Card
+    , utg : Maybe ResultLine
+    , mp : Maybe ResultLine
+    , co : Maybe ResultLine
+    , bu : Maybe ResultLine
+    , sb : Maybe ResultLine
+    , bb : Maybe ResultLine
+    }
+
+
 type alias Model =
     { simulationRequestForm : SimulationRequestForm
-    , currentSimulationResult : WebData SimulationResult
-    , results : List (List ResultLine)
+    , currentApiResponse : WebData SimulationResult
+    , results : List SimulationResult
     , boardSelectModalVisibility : Modal.Visibility
     , boardSelection : List Card
+    , alert : Maybe String
     }
 
 
@@ -133,16 +149,17 @@ main =
 init : Model
 init =
     { simulationRequestForm = initialForm
-    , currentSimulationResult = RemoteData.NotAsked
+    , currentApiResponse = RemoteData.NotAsked
     , results = []
     , boardSelectModalVisibility = Modal.hidden
     , boardSelection = []
+    , alert = Nothing
     }
 
 
 type Msg
     = SimulationRequestSend
-    | SimulationResultReceived (WebData SimulationResult)
+    | ApiResponseReceived (WebData ApiResponse)
     | RangeInput Position String
     | BoardInput String
     | RewriteRange Position
@@ -155,35 +172,110 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SimulationResultReceived (RemoteData.Success result) ->
-            ( { model
-                | currentSimulationResult = RemoteData.Success result
-              }
-            , Cmd.none
-            )
+        ApiResponseReceived result ->
+            let
+                updateSimulationResult ( position, range, equity ) simulationResult =
+                    case position of
+                        UTG ->
+                            { simulationResult | utg = Just (ResultLine range equity) }
 
-        SimulationResultReceived result ->
-            ( { model | currentSimulationResult = result }, Cmd.none )
+                        MP ->
+                            { simulationResult | mp = Just (ResultLine range equity) }
+
+                        CO ->
+                            { simulationResult | co = Just (ResultLine range equity) }
+
+                        BU ->
+                            { simulationResult | bu = Just (ResultLine range equity) }
+
+                        SB ->
+                            { simulationResult | sb = Just (ResultLine range equity) }
+
+                        BB ->
+                            { simulationResult | bb = Just (ResultLine range equity) }
+
+                sr =
+                    result
+                        |> RemoteData.map
+                            (\res ->
+                                [ ( model.simulationRequestForm.utg.validated |> Result.withDefault "", UTG )
+                                , ( model.simulationRequestForm.mp.validated |> Result.withDefault "", MP )
+                                , ( model.simulationRequestForm.co.validated |> Result.withDefault "", CO )
+                                , ( model.simulationRequestForm.bu.validated |> Result.withDefault "", BU )
+                                , ( model.simulationRequestForm.sb.validated |> Result.withDefault "", SB )
+                                , ( model.simulationRequestForm.bb.validated |> Result.withDefault "", BB )
+                                ]
+                                    |> List.filter (\( r, _ ) -> not <| String.isEmpty r)
+                                    |> List.map2 (\e ( r, p ) -> ( p, r, e ))
+                                        ([ Just res.equityPlayer1
+                                         , Just res.equityPlayer2
+                                         , res.equityPlayer3
+                                         , res.equityPlayer4
+                                         , res.equityPlayer5
+                                         , res.equityPlayer6
+                                         ]
+                                            |> Maybe.Extra.values
+                                        )
+                                    |> List.foldl
+                                        updateSimulationResult
+                                        (SimulationResult
+                                            (model.simulationRequestForm.board.validated |> Result.withDefault [])
+                                            Nothing
+                                            Nothing
+                                            Nothing
+                                            Nothing
+                                            Nothing
+                                            Nothing
+                                        )
+                            )
+            in
+            ( { model | currentApiResponse = sr }, Cmd.none )
 
         SimulationRequestSend ->
             let
-                validatedRequest =
-                    Ok SimulationRequest
+                ranges =
+                    [ model.simulationRequestForm.utg.validated
+                    , model.simulationRequestForm.mp.validated
+                    , model.simulationRequestForm.co.validated
+                    , model.simulationRequestForm.bu.validated
+                    , model.simulationRequestForm.sb.validated
+                    , model.simulationRequestForm.bb.validated
+                    ]
+                        |> List.map Result.toMaybe
+                        |> Maybe.Extra.values
+                        |> List.filter (not << String.isEmpty)
+
+                formValid =
+                    (Ok (\_ _ _ _ _ _ _ -> True)
                         |> Form.apply model.simulationRequestForm.board.validated
                         |> Form.apply model.simulationRequestForm.utg.validated
                         |> Form.apply model.simulationRequestForm.mp.validated
-            in
-            case validatedRequest of
-                Ok req ->
-                    ( { model
-                        | currentSimulationResult = RemoteData.Loading
-                        , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-                      }
-                    , sendSimulationRequest req
+                        |> Form.apply model.simulationRequestForm.co.validated
+                        |> Form.apply model.simulationRequestForm.bu.validated
+                        |> Form.apply model.simulationRequestForm.sb.validated
+                        |> Form.apply model.simulationRequestForm.bb.validated
                     )
+                        |> Result.Extra.isOk
+            in
+            if not <| formValid then
+                ( { model
+                    | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+                    , alert = Just "Cannot not understand some of the inputs. Please check and try to correct."
+                  }
+                , Cmd.none
+                )
 
-                Err _ ->
-                    ( { model | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm }, Cmd.none )
+            else if (ranges |> List.length) < 2 then
+                ( { model | alert = Just "Please enter at least 2 ranges." }, Cmd.none )
+
+            else
+                ( { model
+                    | currentApiResponse = RemoteData.Loading
+                    , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+                    , alert = Nothing
+                  }
+                , sendSimulationRequest (model.simulationRequestForm.board.validated |> Result.withDefault []) ranges
+                )
 
         RangeInput position str ->
             ( { model | simulationRequestForm = setRange position str model.simulationRequestForm }, Cmd.none )
@@ -204,16 +296,16 @@ update msg model =
                     ( { model | simulationRequestForm = { form | mp = Form.rewrite form.mp identity } }, Cmd.none )
 
                 CO ->
-                    ( model, Cmd.none )
+                    ( { model | simulationRequestForm = { form | co = Form.rewrite form.co identity } }, Cmd.none )
 
                 BU ->
-                    ( model, Cmd.none )
+                    ( { model | simulationRequestForm = { form | bu = Form.rewrite form.bu identity } }, Cmd.none )
 
                 SB ->
-                    ( model, Cmd.none )
+                    ( { model | simulationRequestForm = { form | sb = Form.rewrite form.sb identity } }, Cmd.none )
 
                 BB ->
-                    ( model, Cmd.none )
+                    ( { model | simulationRequestForm = { form | bb = Form.rewrite form.bb identity } }, Cmd.none )
 
         CloseBoardSelectModal ->
             ( { model | boardSelectModalVisibility = Modal.hidden }
@@ -248,16 +340,19 @@ update msg model =
 ---- HTTP ----
 
 
-type alias SimulationRequest =
-    { board : List Card
-    , range1 : String
-    , range2 : String
+type alias ApiResponse =
+    { equityPlayer1 : Float
+    , equityPlayer2 : Float
+    , equityPlayer3 : Maybe Float
+    , equityPlayer4 : Maybe Float
+    , equityPlayer5 : Maybe Float
+    , equityPlayer6 : Maybe Float
     }
 
 
-simulationResponseDecoder : Decode.Decoder SimulationResult
+simulationResponseDecoder : Decode.Decoder ApiResponse
 simulationResponseDecoder =
-    Decode.succeed SimulationResult
+    Decode.succeed ApiResponse
         |> P.required "equity_player_1" Decode.float
         |> P.required "equity_player_2" Decode.float
         |> P.required "equity_player_3" (Decode.nullable Decode.float)
@@ -266,18 +361,18 @@ simulationResponseDecoder =
         |> P.required "equity_player_6" (Decode.nullable Decode.float)
 
 
-sendSimulationRequest : SimulationRequest -> Cmd Msg
-sendSimulationRequest request =
+sendSimulationRequest : List Card -> List String -> Cmd Msg
+sendSimulationRequest board ranges =
     Http.get
-        { expect = Http.expectJson (RemoteData.fromResult >> SimulationResultReceived) simulationResponseDecoder
+        { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
         , url =
             Url.Builder.crossOrigin "https://safe-shore-53897.herokuapp.com"
                 [ "simulation" ]
-                [ Url.Builder.string "range1" request.range1
-                , Url.Builder.string "range2" request.range2
-                , Url.Builder.string "board" (request.board |> List.map Card.toString |> String.concat)
-                , Url.Builder.string "stdev_target" "0.001"
-                ]
+                ([ Url.Builder.string "board" (board |> List.map Card.toString |> String.concat)
+                 , Url.Builder.string "stdev_target" "0.001"
+                 ]
+                    ++ (ranges |> List.indexedMap (\i range -> Url.Builder.string ("range" ++ String.fromInt (i + 1)) range))
+                )
         }
 
 
@@ -320,7 +415,7 @@ calculatorView model =
                         ]
                     |> Card.block []
                         [ Block.custom <|
-                            case model.currentSimulationResult of
+                            case model.currentApiResponse of
                                 RemoteData.Loading ->
                                     loadingView
 
@@ -331,7 +426,11 @@ calculatorView model =
                                         ]
 
                                 _ ->
-                                    inputFormView model
+                                    Html.div []
+                                        ((model.alert |> Maybe.Extra.toList |> List.map (\msg -> Alert.simpleDanger [] [ Html.text msg ]))
+                                            ++ [ inputFormView model
+                                               ]
+                                        )
                         ]
 
                 -- , Card.config []
@@ -342,52 +441,19 @@ calculatorView model =
         ]
 
 
-equityValue : Position -> Model -> Maybe Float
-equityValue position model =
-    case model.currentSimulationResult of
-        RemoteData.NotAsked ->
-            Nothing
-
-        RemoteData.Loading ->
-            Nothing
-
-        RemoteData.Failure _ ->
-            Nothing
-
-        RemoteData.Success { equityPlayer1, equityPlayer2, equityPlayer3, equityPlayer4, equityPlayer5, equityPlayer6 } ->
-            case position of
-                UTG ->
-                    Just equityPlayer1
-
-                MP ->
-                    Just equityPlayer2
-
-                CO ->
-                    equityPlayer3
-
-                BU ->
-                    equityPlayer4
-
-                SB ->
-                    equityPlayer5
-
-                BB ->
-                    equityPlayer6
-
-
-equityValueView : Position -> Model -> Input.Option msg
-equityValueView position model =
-    case equityValue position model of
+equityValueView : Maybe ResultLine -> Input.Option msg
+equityValueView result =
+    case result of
         Nothing ->
             Input.value ""
 
         Just value ->
-            Input.value (Round.round 2 (100 * value) ++ " %")
+            Input.value (Round.round 2 (100 * value.equity) ++ " %")
 
 
 handRangePlaceholder : String
 handRangePlaceholder =
-    "Hand Range (e.g. QQ+, AK)"
+    ""
 
 
 validationFeedbackOutline : Form.Field a -> List (Input.Option msg)
@@ -467,74 +533,12 @@ cardView msg opacity cursor refWidth card =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ Form.row []
-            [ Form.col []
-                [ Form.group []
-                    [ Form.label [] [ Html.text model.simulationRequestForm.utg.name ]
-                    , InputGroup.config
-                        (InputGroup.text
-                            (validationFeedbackOutline model.simulationRequestForm.utg
-                                ++ [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                                   , Input.value model.simulationRequestForm.utg.value
-                                   , Input.onInput (RangeInput UTG)
-                                   ]
-                            )
-                        )
-                        |> InputGroup.successors
-                            [ InputGroup.button
-                                [ Button.outlineSecondary
-                                , Button.onClick (RewriteRange UTG)
-                                , Button.attrs [ Html.Attributes.tabindex -1 ]
-                                , Button.disabled (rewritable UTG model |> not)
-                                ]
-                                [ Html.text "Rewrite" ]
-                            ]
-                        |> InputGroup.view
-                    ]
-                ]
-            , Form.col [ Col.sm2 ]
-                [ Form.group []
-                    [ Form.label [] [ Html.text "Equity" ]
-                    , Input.text
-                        [ Input.readonly True
-                        , Input.attrs [ Html.Attributes.tabindex -1 ]
-                        , equityValueView UTG model
-                        ]
-                    ]
-                ]
-            ]
-        , Form.row []
-            [ Form.col []
-                [ Form.group []
-                    [ Form.label [] [ Html.text model.simulationRequestForm.mp.name ]
-                    , InputGroup.config
-                        (InputGroup.text
-                            (validationFeedbackOutline model.simulationRequestForm.mp
-                                ++ [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                                   , Input.value model.simulationRequestForm.mp.value
-                                   , Input.onInput (RangeInput MP)
-                                   ]
-                            )
-                        )
-                        |> InputGroup.successors
-                            [ InputGroup.button
-                                [ Button.outlineSecondary
-                                , Button.onClick (RewriteRange MP)
-                                , Button.disabled (rewritable MP model |> not)
-                                , Button.attrs [ Html.Attributes.tabindex -1 ]
-                                ]
-                                [ Html.text "Rewrite" ]
-                            ]
-                        |> InputGroup.view
-                    ]
-                ]
-            , Form.col [ Col.sm2 ]
-                [ Form.group []
-                    [ Form.label [] [ Html.text "Equity" ]
-                    , Input.text [ Input.readonly True, Input.attrs [ Html.Attributes.tabindex -1 ], equityValueView MP model ]
-                    ]
-                ]
-            ]
+        [ formRow UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map (\r -> r.utg) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , formRow MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map (\r -> r.mp) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , formRow CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map (\r -> r.co) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , formRow BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map (\r -> r.bu) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , formRow SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map (\r -> r.sb) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , formRow BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map (\r -> r.bb) |> RemoteData.toMaybe |> Maybe.andThen identity)
         , Form.row
             []
             [ Form.col [ Col.sm10 ]
@@ -543,8 +547,7 @@ inputFormView model =
                     , InputGroup.config
                         (InputGroup.text
                             (validationFeedbackOutline model.simulationRequestForm.board
-                                ++ [ Input.attrs [ Html.Attributes.placeholder "Board (e.g. 3h4h4c)" ]
-                                   , Input.value model.simulationRequestForm.board.value
+                                ++ [ Input.value model.simulationRequestForm.board.value
                                    , Input.onInput BoardInput
                                    ]
                             )
@@ -583,26 +586,50 @@ inputFormView model =
         ]
 
 
-rewritable : Position -> Model -> Bool
-rewritable position model =
-    case position of
-        UTG ->
-            model.simulationRequestForm.utg.value /= (model.simulationRequestForm.utg.validated |> Result.withDefault "")
+formRow : Position -> Form.Field String -> Maybe ResultLine -> Html Msg
+formRow position field result =
+    Form.row []
+        [ Form.col []
+            [ Form.group []
+                [ Form.label [] [ Html.text field.name ]
+                , InputGroup.config
+                    (InputGroup.text
+                        ((if field.validated == Ok "" then
+                            []
 
-        MP ->
-            model.simulationRequestForm.mp.value /= (model.simulationRequestForm.mp.validated |> Result.withDefault "")
+                          else
+                            validationFeedbackOutline field
+                         )
+                            ++ [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
+                               , Input.value field.value
+                               , Input.onInput (RangeInput position)
+                               ]
+                        )
+                    )
+                    |> InputGroup.successors
+                        [ InputGroup.button
+                            [ Button.outlineSecondary
+                            , Button.onClick (RewriteRange position)
+                            , Button.disabled (rewritable field |> not)
+                            , Button.attrs [ Html.Attributes.tabindex -1 ]
+                            ]
+                            [ Html.text "Rewrite" ]
+                        ]
+                    |> InputGroup.view
+                ]
+            ]
+        , Form.col [ Col.sm2 ]
+            [ Form.group []
+                [ Form.label [] [ Html.text "Equity" ]
+                , Input.text [ Input.readonly True, Input.attrs [ Html.Attributes.tabindex -1 ], equityValueView result ]
+                ]
+            ]
+        ]
 
-        CO ->
-            True
 
-        BU ->
-            True
-
-        SB ->
-            True
-
-        BB ->
-            True
+rewritable : Form.Field String -> Bool
+rewritable field =
+    field.value /= (field.validated |> Result.withDefault "")
 
 
 boardCardView : Card -> Html Msg
