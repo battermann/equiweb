@@ -12,6 +12,7 @@ import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Modal as Modal
 import Bootstrap.Spinner as Spinner
+import Bootstrap.Table as Table
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
@@ -26,6 +27,7 @@ import Json.Decode.Pipeline as P
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
+import Poker.Position as Position exposing (Position(..))
 import Poker.Range as Range
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
@@ -35,15 +37,6 @@ import Round
 import Svg
 import Svg.Attributes
 import Url.Builder
-
-
-type Position
-    = UTG
-    | MP
-    | CO
-    | BU
-    | SB
-    | BB
 
 
 type alias SimulationRequestForm =
@@ -230,7 +223,7 @@ update msg model =
                                         )
                             )
             in
-            ( { model | currentApiResponse = sr }, Cmd.none )
+            ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault []) ++ model.results }, Cmd.none )
 
         SimulationRequestSend ->
             let
@@ -388,9 +381,11 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Poker Equity Calculator"
     , body =
-        [ Html.div []
-            [ calculatorView model
-            , modalView model
+        [ Grid.container []
+            [ Html.div []
+                [ calculatorView model
+                , modalView model
+                ]
             ]
         ]
     }
@@ -410,7 +405,7 @@ calculatorView model =
     Grid.row []
         [ Grid.col []
             [ Card.deck
-                [ Card.config []
+                ((Card.config [ Card.attrs [ Spacing.mb3 ], Card.outlineDark ]
                     |> Card.headerH2 []
                         [ Html.div [ Flex.block, Flex.row, Flex.alignItemsStart ]
                             [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
@@ -436,11 +431,9 @@ calculatorView model =
                                                ]
                                         )
                         ]
-
-                -- , Card.config []
-                --     |> Card.block []
-                --         []
-                ]
+                 )
+                    :: (model.results |> List.map resultView)
+                )
             ]
         ]
 
@@ -570,12 +563,7 @@ inputFormView model =
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
-                [ Html.div
-                    [ Flex.block
-                    , Flex.row
-                    ]
-                    [ boardView model ]
-                ]
+                [ boardView "6vmin" (model.simulationRequestForm.board.validated |> Result.withDefault []) ]
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
@@ -644,32 +632,32 @@ rewritable field =
     field.value /= (field.validated |> Result.withDefault "")
 
 
-boardCardView : Card -> Html Msg
-boardCardView =
-    cardView Nothing "1" "default" "6vmin"
+boardCardView : String -> Card -> Html Msg
+boardCardView hight =
+    cardView Nothing "1" "default" hight
 
 
-boardView : Model -> Html Msg
-boardView model =
-    Html.div [ Flex.block, Flex.row ] (streetsView (model.simulationRequestForm.board.validated |> Result.withDefault []))
+boardView : String -> List Card -> Html Msg
+boardView height cards =
+    Html.div [ Flex.block, Flex.row ] (streetsView height cards)
 
 
-streetView : String -> List Card -> Html Msg
-streetView label cards =
-    Html.div [ Html.Attributes.style "margin-right" "10px" ] [ Html.h5 [] [ Html.text label ], Html.div [ Flex.block, Flex.row ] (cards |> List.map boardCardView) ]
+streetView : String -> String -> List Card -> Html Msg
+streetView label height cards =
+    Html.div [ Html.Attributes.style "margin-right" "10px" ] [ Html.h5 [] [ Html.text label ], Html.div [ Flex.block, Flex.row ] (cards |> List.map (boardCardView height)) ]
 
 
-streetsView : List Card -> List (Html Msg)
-streetsView cards =
+streetsView : String -> List Card -> List (Html Msg)
+streetsView height cards =
     case cards of
         _ :: _ :: _ :: [] ->
-            [ streetView "Flop" cards ]
+            [ streetView "Flop" height cards ]
 
         f1 :: f2 :: f3 :: turn :: [] ->
-            [ streetView "Flop" [ f1, f2, f3 ], streetView "Turn" [ turn ] ]
+            [ streetView "Flop" height [ f1, f2, f3 ], streetView "Turn" height [ turn ] ]
 
         f1 :: f2 :: f3 :: turn :: river :: [] ->
-            [ streetView "Flop" [ f1, f2, f3 ], streetView "Turn" [ turn ], streetView "River" [ river ] ]
+            [ streetView "Flop" height [ f1, f2, f3 ], streetView "Turn" height [ turn ], streetView "River" height [ river ] ]
 
         _ ->
             []
@@ -744,3 +732,53 @@ cardOpacity model card =
 
     else
         "1"
+
+
+resultView : SimulationResult -> Card.Config Msg
+resultView result =
+    Card.config [ Card.attrs [ Spacing.mb3 ], Card.outlineDark ]
+        |> Card.headerH4 []
+            [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
+                [ Html.div [ Size.h100 ]
+                    [ Html.text "Board: "
+                    , Html.text (result.board |> List.map Card.toString |> String.concat)
+                    ]
+                , boardView "10px" result.board
+                ]
+            ]
+        |> Card.block []
+            [ Block.custom <|
+                Table.table
+                    { options = [ Table.striped, Table.hover, Table.small ]
+                    , thead =
+                        Table.simpleThead
+                            [ Table.th [] [ Html.text "Position" ]
+                            , Table.th [] [ Html.text "Range" ]
+                            , Table.th [] [ Html.text "Equity" ]
+                            ]
+                    , tbody =
+                        Table.tbody []
+                            (rowView UTG result.utg
+                                ++ rowView MP result.mp
+                                ++ rowView CO result.co
+                                ++ rowView BU result.bu
+                                ++ rowView SB result.sb
+                                ++ rowView BB result.bb
+                            )
+                    }
+            ]
+
+
+rowView : Position -> Maybe ResultLine -> List (Table.Row Msg)
+rowView position resultLine =
+    case resultLine of
+        Just result ->
+            [ Table.tr []
+                [ Table.td [] [ Html.text (position |> Position.toString) ]
+                , Table.td [] [ Html.text result.range ]
+                , Table.td [] [ Html.text (Round.round 2 (result.equity * 100) ++ "%") ]
+                ]
+            ]
+
+        Nothing ->
+            []
