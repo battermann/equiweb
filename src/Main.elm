@@ -230,7 +230,7 @@ update msg model =
                 ( { model | boardSelection = model.boardSelection |> List.filter ((/=) card) }, Cmd.none )
 
             else if (model.boardSelection |> List.length) < 5 then
-                ( { model | boardSelection = card :: model.boardSelection }, Cmd.none )
+                ( { model | boardSelection = model.boardSelection ++ [ card ] }, Cmd.none )
 
             else
                 ( model, Cmd.none )
@@ -485,6 +485,7 @@ inputFormView model =
                                 [ Button.outlineSecondary
                                 , Button.onClick (RewriteRange UTG)
                                 , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                , Button.disabled (rewritable UTG model |> not)
                                 ]
                                 [ Html.text "Rewrite" ]
                             ]
@@ -519,6 +520,7 @@ inputFormView model =
                             [ InputGroup.button
                                 [ Button.outlineSecondary
                                 , Button.onClick (RewriteRange MP)
+                                , Button.disabled (rewritable MP model |> not)
                                 , Button.attrs [ Html.Attributes.tabindex -1 ]
                                 ]
                                 [ Html.text "Rewrite" ]
@@ -565,7 +567,7 @@ inputFormView model =
                     [ Flex.block
                     , Flex.row
                     ]
-                    (model.simulationRequestForm.board.validated |> Result.withDefault [] |> List.map (cardView Nothing "1" "default" "6vmin"))
+                    [ boardView model ]
                 ]
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
@@ -579,6 +581,59 @@ inputFormView model =
                 ]
             ]
         ]
+
+
+rewritable : Position -> Model -> Bool
+rewritable position model =
+    case position of
+        UTG ->
+            model.simulationRequestForm.utg.value /= (model.simulationRequestForm.utg.validated |> Result.withDefault "")
+
+        MP ->
+            model.simulationRequestForm.mp.value /= (model.simulationRequestForm.mp.validated |> Result.withDefault "")
+
+        CO ->
+            True
+
+        BU ->
+            True
+
+        SB ->
+            True
+
+        BB ->
+            True
+
+
+boardCardView : Card -> Html Msg
+boardCardView =
+    cardView Nothing "1" "default" "6vmin"
+
+
+boardView : Model -> Html Msg
+boardView model =
+    Html.div [ Flex.block, Flex.row ] (streetsView (model.simulationRequestForm.board.validated |> Result.withDefault []))
+
+
+streetView : String -> List Card -> Html Msg
+streetView label cards =
+    Html.div [ Html.Attributes.style "margin-right" "10px" ] [ Html.h5 [] [ Html.text label ], Html.div [ Flex.block, Flex.row ] (cards |> List.map boardCardView) ]
+
+
+streetsView : List Card -> List (Html Msg)
+streetsView cards =
+    case cards of
+        _ :: _ :: _ :: [] ->
+            [ streetView "Flop" cards ]
+
+        f1 :: f2 :: f3 :: turn :: [] ->
+            [ streetView "Flop" [ f1, f2, f3 ], streetView "Turn" [ turn ] ]
+
+        f1 :: f2 :: f3 :: turn :: river :: [] ->
+            [ streetView "Flop" [ f1, f2, f3 ], streetView "Turn" [ turn ], streetView "River" [ river ] ]
+
+        _ ->
+            []
 
 
 modalView : Model -> Html Msg
