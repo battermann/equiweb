@@ -26,9 +26,13 @@ import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.Range as Range
+import Poker.Rank as Rank exposing (Rank)
+import Poker.Suit exposing (Suit(..))
 import RemoteData exposing (WebData)
 import Result.Extra
 import Round
+import Svg
+import Svg.Attributes
 import Url.Builder
 
 
@@ -392,6 +396,52 @@ validationFeedbackText field =
             []
 
 
+cardView : Float -> Card -> Html Msg
+cardView width card =
+    let
+        height =
+            width * 7.0 / 5.0
+
+        color =
+            case card.suit of
+                Club ->
+                    "forestgreen"
+
+                Spades ->
+                    "darkslategrey"
+
+                Heart ->
+                    "darkred"
+
+                Diamond ->
+                    "royalblue"
+    in
+    Svg.svg
+        [ Svg.Attributes.width ((width + 1) |> String.fromFloat)
+        , Svg.Attributes.height ((height + 1) |> String.fromFloat)
+        , Svg.Attributes.viewBox ("0 0" ++ " " ++ ((width + 1) |> String.fromFloat) ++ " " ++ ((height + 1) |> String.fromFloat))
+        ]
+        [ Svg.rect
+            [ Svg.Attributes.x "1"
+            , Svg.Attributes.y "1"
+            , Svg.Attributes.width (width |> String.fromFloat)
+            , Svg.Attributes.height (height |> String.fromFloat)
+            , Svg.Attributes.rx ((width / 4) |> String.fromFloat)
+            , Svg.Attributes.ry ((width / 4) |> String.fromFloat)
+            , Svg.Attributes.fill color
+            ]
+            []
+        , Svg.text_
+            [ Svg.Attributes.x ((width * 0.1) |> String.fromFloat)
+            , Svg.Attributes.y ((width * 1.2) |> String.fromFloat)
+            , Svg.Attributes.fill "white"
+            , Svg.Attributes.fontSize (width * 1.2 |> String.fromFloat)
+            , Svg.Attributes.fontFamily "monospace"
+            ]
+            [ Svg.text (card.rank |> Rank.toString) ]
+        ]
+
+
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
@@ -476,10 +526,9 @@ inputFormView model =
                     ]
                 ]
             ]
-
-        -- , Form.row [ Row.attrs [ Spacing.mt2 ] ]
-        --     [ Form.col [] [ Html.img [ Html.Attributes.src "images/AH.svg", Html.Attributes.width 60 ] [] ]
-        --     ]
+        , Form.row [ Row.attrs [ Spacing.mt2 ] ]
+            [ Form.col [] (model.simulationRequestForm.board.validated |> Result.withDefault [] |> List.map (cardView 40))
+            ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
                 [ Button.button
