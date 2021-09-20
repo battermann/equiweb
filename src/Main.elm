@@ -29,7 +29,7 @@ import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.Position as Position exposing (Position(..))
-import Poker.Range as Range
+import Poker.Range as Range exposing (HandRange)
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
 import RemoteData exposing (WebData)
@@ -41,12 +41,12 @@ import Url.Builder
 
 
 type alias SimulationRequestForm =
-    { utg : Form.Field String
-    , mp : Form.Field String
-    , co : Form.Field String
-    , bu : Form.Field String
-    , sb : Form.Field String
-    , bb : Form.Field String
+    { utg : Form.Field (List HandRange)
+    , mp : Form.Field (List HandRange)
+    , co : Form.Field (List HandRange)
+    , bu : Form.Field (List HandRange)
+    , sb : Form.Field (List HandRange)
+    , bb : Form.Field (List HandRange)
     , board : Form.Field (List Card)
     }
 
@@ -60,32 +60,32 @@ setRange : Position -> String -> SimulationRequestForm -> SimulationRequestForm
 setRange position range form =
     case position of
         UTG ->
-            { form | utg = form.utg |> Form.setValue Range.rewrite range }
+            { form | utg = form.utg |> Form.setValue Range.parseAndNormalize range }
 
         MP ->
-            { form | mp = form.mp |> Form.setValue Range.rewrite range }
+            { form | mp = form.mp |> Form.setValue Range.parseAndNormalize range }
 
         CO ->
-            { form | co = form.co |> Form.setValue Range.rewrite range }
+            { form | co = form.co |> Form.setValue Range.parseAndNormalize range }
 
         BU ->
-            { form | bu = form.bu |> Form.setValue Range.rewrite range }
+            { form | bu = form.bu |> Form.setValue Range.parseAndNormalize range }
 
         SB ->
-            { form | sb = form.sb |> Form.setValue Range.rewrite range }
+            { form | sb = form.sb |> Form.setValue Range.parseAndNormalize range }
 
         BB ->
-            { form | bb = form.bb |> Form.setValue Range.rewrite range }
+            { form | bb = form.bb |> Form.setValue Range.parseAndNormalize range }
 
 
 initialForm : SimulationRequestForm
 initialForm =
-    { utg = { name = "UTG", value = "", validated = Range.rewrite "", edited = False }
-    , mp = { name = "MP", value = "", validated = Range.rewrite "", edited = False }
-    , co = { name = "CO", value = "", validated = Range.rewrite "", edited = False }
-    , bu = { name = "BU", value = "", validated = Range.rewrite "", edited = False }
-    , sb = { name = "SB", value = "", validated = Range.rewrite "", edited = False }
-    , bb = { name = "BB", value = "", validated = Range.rewrite "", edited = False }
+    { utg = { name = "UTG", value = "", validated = Range.parseAndNormalize "", edited = False }
+    , mp = { name = "MP", value = "", validated = Range.parseAndNormalize "", edited = False }
+    , co = { name = "CO", value = "", validated = Range.parseAndNormalize "", edited = False }
+    , bu = { name = "BU", value = "", validated = Range.parseAndNormalize "", edited = False }
+    , sb = { name = "SB", value = "", validated = Range.parseAndNormalize "", edited = False }
+    , bb = { name = "BB", value = "", validated = Range.parseAndNormalize "", edited = False }
     , board = { name = "Board", value = "", validated = Ok [], edited = False }
     }
 
@@ -104,7 +104,7 @@ setAllFormFieldsToEdited form =
 
 
 type alias ResultLine =
-    { range : String
+    { range : List HandRange
     , equity : Float
     }
 
@@ -192,14 +192,14 @@ handleApiResponse model result =
             result
                 |> RemoteData.map
                     (\res ->
-                        [ ( model.simulationRequestForm.utg.validated |> Result.withDefault "", UTG )
-                        , ( model.simulationRequestForm.mp.validated |> Result.withDefault "", MP )
-                        , ( model.simulationRequestForm.co.validated |> Result.withDefault "", CO )
-                        , ( model.simulationRequestForm.bu.validated |> Result.withDefault "", BU )
-                        , ( model.simulationRequestForm.sb.validated |> Result.withDefault "", SB )
-                        , ( model.simulationRequestForm.bb.validated |> Result.withDefault "", BB )
+                        [ ( model.simulationRequestForm.utg.validated |> Result.withDefault [], UTG )
+                        , ( model.simulationRequestForm.mp.validated |> Result.withDefault [], MP )
+                        , ( model.simulationRequestForm.co.validated |> Result.withDefault [], CO )
+                        , ( model.simulationRequestForm.bu.validated |> Result.withDefault [], BU )
+                        , ( model.simulationRequestForm.sb.validated |> Result.withDefault [], SB )
+                        , ( model.simulationRequestForm.bb.validated |> Result.withDefault [], BB )
                         ]
-                            |> List.filter (\( r, _ ) -> not <| String.isEmpty r)
+                            |> List.filter (\( r, _ ) -> not <| List.isEmpty r)
                             |> List.map2 (\e ( r, p ) -> ( p, r, e ))
                                 ([ Just res.equityPlayer1
                                  , Just res.equityPlayer2
@@ -239,7 +239,7 @@ sendSimulationRequest model =
             ]
                 |> List.map Result.toMaybe
                 |> Maybe.Extra.values
-                |> List.filter (not << String.isEmpty)
+                |> List.filter (not << List.isEmpty)
 
         formValid =
             (Ok (\_ _ _ _ _ _ _ -> True)
@@ -293,25 +293,28 @@ update msg model =
             let
                 form =
                     model.simulationRequestForm
+
+                rangeToString =
+                    List.map Range.toString >> String.join ","
             in
             case position of
                 UTG ->
-                    ( { model | simulationRequestForm = { form | utg = Form.rewrite form.utg identity } }, Cmd.none )
+                    ( { model | simulationRequestForm = { form | utg = Form.rewrite form.utg rangeToString } }, Cmd.none )
 
                 MP ->
-                    ( { model | simulationRequestForm = { form | mp = Form.rewrite form.mp identity } }, Cmd.none )
+                    ( { model | simulationRequestForm = { form | mp = Form.rewrite form.mp rangeToString } }, Cmd.none )
 
                 CO ->
-                    ( { model | simulationRequestForm = { form | co = Form.rewrite form.co identity } }, Cmd.none )
+                    ( { model | simulationRequestForm = { form | co = Form.rewrite form.co rangeToString } }, Cmd.none )
 
                 BU ->
-                    ( { model | simulationRequestForm = { form | bu = Form.rewrite form.bu identity } }, Cmd.none )
+                    ( { model | simulationRequestForm = { form | bu = Form.rewrite form.bu rangeToString } }, Cmd.none )
 
                 SB ->
-                    ( { model | simulationRequestForm = { form | sb = Form.rewrite form.sb identity } }, Cmd.none )
+                    ( { model | simulationRequestForm = { form | sb = Form.rewrite form.sb rangeToString } }, Cmd.none )
 
                 BB ->
-                    ( { model | simulationRequestForm = { form | bb = Form.rewrite form.bb identity } }, Cmd.none )
+                    ( { model | simulationRequestForm = { form | bb = Form.rewrite form.bb rangeToString } }, Cmd.none )
 
         CloseBoardSelectModal ->
             ( { model | boardSelectModalVisibility = Modal.hidden }
@@ -390,7 +393,7 @@ simulationResponseDecoder =
         |> P.required "equity_player_6" (Decode.nullable Decode.float)
 
 
-sendSimulationRequestHttp : List Card -> List String -> Cmd Msg
+sendSimulationRequestHttp : List Card -> List (List HandRange) -> Cmd Msg
 sendSimulationRequestHttp board ranges =
     Http.get
         { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
@@ -400,7 +403,12 @@ sendSimulationRequestHttp board ranges =
                 ([ Url.Builder.string "board" (board |> List.map Card.toString |> String.concat)
                  , Url.Builder.string "stdev_target" "0.001"
                  ]
-                    ++ (ranges |> List.indexedMap (\i range -> Url.Builder.string ("range" ++ String.fromInt (i + 1)) range))
+                    ++ (ranges
+                            |> List.indexedMap
+                                (\i range ->
+                                    Url.Builder.string ("range" ++ String.fromInt (i + 1)) (range |> List.map Range.toString |> String.join ",")
+                                )
+                       )
                 )
         }
 
@@ -564,12 +572,12 @@ cardView msg opacity cursor refWidth card =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ formRow UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map (\r -> r.utg) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , formRow MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map (\r -> r.mp) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , formRow CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map (\r -> r.co) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , formRow BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map (\r -> r.bu) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , formRow SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map (\r -> r.sb) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , formRow BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map (\r -> r.bb) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        [ rangeInputView UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map (\r -> r.utg) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , rangeInputView MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map (\r -> r.mp) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , rangeInputView CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map (\r -> r.co) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , rangeInputView BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map (\r -> r.bu) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , rangeInputView SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map (\r -> r.sb) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        , rangeInputView BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map (\r -> r.bb) |> RemoteData.toMaybe |> Maybe.andThen identity)
         , Form.row
             []
             [ Form.col [ Col.sm10 ]
@@ -620,15 +628,15 @@ inputFormView model =
         ]
 
 
-formRow : Position -> Form.Field String -> Maybe ResultLine -> Html Msg
-formRow position field result =
+rangeInputView : Position -> Form.Field (List HandRange) -> Maybe ResultLine -> Html Msg
+rangeInputView position field result =
     Form.row []
         [ Form.col []
             [ Form.group []
                 [ Form.label [] [ Html.text field.name ]
                 , InputGroup.config
                     (InputGroup.text
-                        ((if field.validated == Ok "" then
+                        ((if field.validated == Ok [] then
                             []
 
                           else
@@ -661,9 +669,9 @@ formRow position field result =
         ]
 
 
-rewritable : Form.Field String -> Bool
+rewritable : Form.Field (List HandRange) -> Bool
 rewritable field =
-    field.value /= (field.validated |> Result.withDefault "")
+    field.value /= (field.validated |> Result.withDefault [] |> List.map Range.toString |> String.join ",")
 
 
 boardCardView : String -> Card -> Html Msg
@@ -786,7 +794,7 @@ resultView result =
 
                   else
                     Html.text "Preflop"
-                , boardView "10px" result.board
+                , boardView "30px" result.board
                 ]
             ]
         |> Card.block []
@@ -818,7 +826,7 @@ rowView position resultLine =
         Just result ->
             [ Table.tr []
                 [ Table.td [] [ Html.text (position |> Position.toString) ]
-                , Table.td [] [ Html.text result.range ]
+                , Table.td [] [ Html.text (result.range |> List.map Range.toString |> String.join ",") ]
                 , Table.td [] [ Html.text (Round.round 2 (result.equity * 100) ++ "%") ]
                 ]
             ]

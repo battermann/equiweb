@@ -1,4 +1,4 @@
-module Poker.Range exposing (isCombo, isHand, rewrite, toString)
+module Poker.Range exposing (HandRange, isCombo, isHand, parseAndNormalize, toString)
 
 import List.Extra
 import Maybe.Extra
@@ -84,12 +84,12 @@ removeRedundantCombos range =
     (uniqueHands |> List.map Hand) ++ (uniqueCombos |> List.filter (\c -> uniqueHands |> List.any (\h -> Hand.combos h |> List.member c) |> not) |> List.map Combo)
 
 
-rewrite : String -> Result (List String) String
-rewrite rangeString =
+parseAndNormalize : String -> Result (List String) (List HandRange)
+parseAndNormalize rangeString =
     rangeString
         |> String.split ","
         |> List.map (String.replace " " "")
         |> List.map (Parser.run parser)
         |> Result.Extra.combine
-        |> Result.map (List.concat >> removeRedundantCombos >> List.map toString >> List.intersperse "," >> String.concat)
+        |> Result.map (List.concat >> removeRedundantCombos)
         |> Result.Extra.mapBoth (always [ "Range is not valid" ]) identity
