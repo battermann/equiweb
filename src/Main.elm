@@ -541,10 +541,10 @@ cardView msg selectState cursor refWidth card =
                     "1"
 
                 NotSelected ->
-                    "0.3"
+                    "0.5"
 
                 MouseOver ->
-                    "0.6"
+                    "0.7"
 
         width =
             60
