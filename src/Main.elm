@@ -951,9 +951,9 @@ resultView result =
                     { options = [ Table.striped, Table.hover, Table.small ]
                     , thead =
                         Table.simpleThead
-                            [ Table.th [] [ Html.text "Position" ]
-                            , Table.th [] [ Html.text "Range" ]
-                            , Table.th [] [ Html.text "Equity" ]
+                            [ Table.th [ Table.cellAttr (Html.Attributes.style "width" "20%") ] [ Html.text "Position" ]
+                            , Table.th [ Table.cellAttr (Html.Attributes.style "width" "60%") ] [ Html.text "Range" ]
+                            , Table.th [ Table.cellAttr (Html.Attributes.style "width" "20%") ] [ Html.text "Equity" ]
                             ]
                     , tbody =
                         Table.tbody []
