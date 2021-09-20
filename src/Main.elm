@@ -405,7 +405,7 @@ calculatorView model =
     Grid.row []
         [ Grid.col []
             [ Card.deck
-                ((Card.config [ Card.attrs [ Spacing.mb3 ], Card.outlineDark ]
+                ((Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
                     |> Card.headerH2 []
                         [ Html.div [ Flex.block, Flex.row, Flex.alignItemsStart ]
                             [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
@@ -698,7 +698,11 @@ modalView model =
                     )
             )
         |> Modal.footer []
-            [ Button.button [ Button.light, Button.onClick CloseBoardSelectModal ] [ Html.text "CANCEL" ]
+            [ Button.button
+                [ Button.light
+                , Button.onClick CloseBoardSelectModal
+                ]
+                [ Html.text "CANCEL" ]
             , Button.button
                 [ Button.success
                 , Button.onClick ConfirmBoardSelection
@@ -739,7 +743,7 @@ cardOpacity model card =
 
 resultView : SimulationResult -> Card.Config Msg
 resultView result =
-    Card.config [ Card.attrs [ Spacing.mb3 ], Card.outlineDark ]
+    Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
         |> Card.headerH4 []
             [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
                 [ if result.board |> List.isEmpty |> not then
