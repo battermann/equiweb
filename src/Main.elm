@@ -127,6 +127,8 @@ type alias Model =
     , boardSelectModalVisibility : Modal.Visibility
     , boardSelection : List Card
     , alert : Maybe String
+    , cardUnderMouse : Maybe Card
+    , ignoreCardHoverState : Bool
     }
 
 
@@ -148,6 +150,8 @@ init =
     , boardSelectModalVisibility = Modal.hidden
     , boardSelection = []
     , alert = Nothing
+    , cardUnderMouse = Nothing
+    , ignoreCardHoverState = False
     }
 
 
@@ -163,6 +167,8 @@ type Msg
     | ConfirmBoardSelection
     | Reset
     | KeyDown RawKey
+    | CardHover (Maybe Card)
+    | ClearBoard
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
@@ -328,10 +334,10 @@ update msg model =
 
         ToggleBoardSelection card ->
             if model.boardSelection |> List.member card then
-                ( { model | boardSelection = model.boardSelection |> List.filter ((/=) card) }, Cmd.none )
+                ( { model | boardSelection = model.boardSelection |> List.filter ((/=) card), ignoreCardHoverState = True }, Cmd.none )
 
             else if (model.boardSelection |> List.length) < 5 then
-                ( { model | boardSelection = model.boardSelection ++ [ card ] }, Cmd.none )
+                ( { model | boardSelection = model.boardSelection ++ [ card ], ignoreCardHoverState = True }, Cmd.none )
 
             else
                 ( model, Cmd.none )
@@ -356,6 +362,12 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        CardHover maybeCard ->
+            ( { model | cardUnderMouse = maybeCard, ignoreCardHoverState = False }, Cmd.none )
+
+        ClearBoard ->
+            ( { model | boardSelection = [] }, Cmd.none )
 
 
 confirmBoardSelection : Model -> ( Model, Cmd Msg )
@@ -506,15 +518,9 @@ validationFeedbackOutline field =
             []
 
 
-cardView : Maybe Msg -> String -> String -> String -> Card -> Html Msg
-cardView msg opacity cursor refWidth card =
+cardView : Maybe Msg -> SelectState -> String -> String -> Card -> Html Msg
+cardView msg selectState cursor refWidth card =
     let
-        width =
-            60
-
-        height =
-            width * 7.0 / 5.0
-
         color =
             case card.suit of
                 Club ->
@@ -528,6 +534,23 @@ cardView msg opacity cursor refWidth card =
 
                 Diamond ->
                     "royalblue"
+
+        opacity =
+            case selectState of
+                Selected ->
+                    "1"
+
+                NotSelected ->
+                    "0.3"
+
+                MouseOver ->
+                    "0.6"
+
+        width =
+            60
+
+        height =
+            width * 7.0 / 5.0
     in
     Html.div
         ([ Html.Attributes.style "width" refWidth
@@ -537,6 +560,8 @@ cardView msg opacity cursor refWidth card =
          , Html.Attributes.style "max-width" "57px"
          , Html.Attributes.style "cursor" cursor
          , Html.Attributes.style "opacity" opacity
+         , Html.Events.onMouseEnter (CardHover <| Just card)
+         , Html.Events.onMouseLeave (CardHover Nothing)
          ]
             ++ (msg |> Maybe.map (Html.Events.onClick >> List.singleton) |> Maybe.withDefault [])
         )
@@ -676,7 +701,7 @@ rewritable field =
 
 boardCardView : String -> Card -> Html Msg
 boardCardView hight =
-    cardView Nothing "1" "default" hight
+    cardView Nothing Selected "default" hight
 
 
 boardView : String -> List Card -> Html Msg
@@ -732,13 +757,18 @@ modalView model =
                                             , Html.Attributes.style "user-select" "none"
                                             , Html.Attributes.style "margin" "1px"
                                             ]
-                                            [ Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardOpacity model card) "pointer" "6vw" card) ]
+                                            [ Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardSelectState card model) "pointer" "6vw" card) ]
                                     )
                             )
                     )
             )
         |> Modal.footer []
             [ Button.button
+                [ Button.light
+                , Button.onClick ClearBoard
+                ]
+                [ Html.text "CLEAR ALL" ]
+            , Button.button
                 [ Button.light
                 , Button.onClick CloseBoardSelectModal
                 ]
@@ -770,15 +800,6 @@ isBoardSelectionValid model =
 
         _ ->
             False
-
-
-cardOpacity : Model -> Card -> String
-cardOpacity model card =
-    if model.boardSelection |> List.member card then
-        "0.3"
-
-    else
-        "1"
 
 
 resultView : SimulationResult -> Card.Config Msg
@@ -833,6 +854,38 @@ rowView position resultLine =
 
         Nothing ->
             []
+
+
+cardSelectState : Card -> Model -> SelectState
+cardSelectState card model =
+    case model.cardUnderMouse of
+        Just cum ->
+            if
+                cum
+                    == card
+                    && not model.ignoreCardHoverState
+                    && (List.length model.boardSelection < 5 || (model.boardSelection |> List.member card))
+            then
+                MouseOver
+
+            else if model.boardSelection |> List.member card then
+                Selected
+
+            else
+                NotSelected
+
+        Nothing ->
+            if model.boardSelection |> List.member card then
+                Selected
+
+            else
+                NotSelected
+
+
+type SelectState
+    = Selected
+    | NotSelected
+    | MouseOver
 
 
 

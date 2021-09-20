@@ -1,4 +1,4 @@
-module Poker.Range exposing (HandRange, isCombo, isHand, parseAndNormalize, toString)
+module Poker.Range exposing (HandRange, fromCombo, fromHand, isCombo, isHand, parseAndNormalize, toString)
 
 import List.Extra
 import Maybe.Extra
@@ -11,6 +11,16 @@ import Result.Extra
 type HandRange
     = Hand Hand
     | Combo Combo
+
+
+fromHand : Hand -> HandRange
+fromHand =
+    Hand
+
+
+fromCombo : Combo -> HandRange
+fromCombo =
+    Combo
 
 
 toString : HandRange -> String
