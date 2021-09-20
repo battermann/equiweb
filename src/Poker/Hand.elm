@@ -1,14 +1,91 @@
-module Poker.Hand exposing (Hand, highCard, lowCard, offsuit, pair, parser, suited, toString)
+module Poker.Hand exposing (Hand, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, pair, parser, suited, toString)
 
 import List
+import Maybe.Extra
 import Parser exposing ((|.), (|=), Parser)
+import Poker.Card exposing (Card)
+import Poker.Combo as Combo exposing (Combo)
 import Poker.Rank as Rank exposing (Rank)
+import Poker.Suit as Suit
 
 
 type Hand
     = Pair Rank
     | Suited Rank Rank
     | Offsuit Rank Rank
+
+
+combos : Hand -> List Combo
+combos hand =
+    case hand of
+        Pair rank ->
+            Suit.suitCombinations
+                |> List.map (\( s1, s2 ) -> Combo.combo (Card rank s1) (Card rank s2))
+                |> Maybe.Extra.values
+
+        Suited high low ->
+            Suit.all
+                |> List.map (\suit -> Combo.combo (Card high suit) (Card low suit))
+                |> Maybe.Extra.values
+
+        Offsuit high low ->
+            Suit.all
+                |> List.concatMap (\s1 -> Suit.all |> List.map (Tuple.pair s1))
+                |> List.filter (\( s1, s2 ) -> s1 /= s2)
+                |> List.map (\( s1, s2 ) -> Combo.combo (Card high s1) (Card low s2))
+                |> Maybe.Extra.values
+
+
+grid : List (List Hand)
+grid =
+    Rank.all
+        |> List.reverse
+        |> List.map
+            (\r1 ->
+                Rank.all
+                    |> List.reverse
+                    |> List.map
+                        (\r2 ->
+                            if r1 == r2 then
+                                Pair r1
+
+                            else if r1 |> Rank.gt r2 then
+                                Suited r1 r2
+
+                            else
+                                Offsuit r2 r1
+                        )
+            )
+
+
+isOffsuit : Hand -> Bool
+isOffsuit hand =
+    case hand of
+        Offsuit _ _ ->
+            True
+
+        _ ->
+            False
+
+
+isPair : Hand -> Bool
+isPair hand =
+    case hand of
+        Pair _ ->
+            True
+
+        _ ->
+            False
+
+
+isSuited : Hand -> Bool
+isSuited hand =
+    case hand of
+        Suited _ _ ->
+            True
+
+        _ ->
+            False
 
 
 toString : Hand -> String
