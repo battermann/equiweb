@@ -551,7 +551,7 @@ sendSimulationRequestHttp board ranges =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "Poker Equity Calculator"
+    { title = "Equiweb"
     , body =
         [ Grid.container []
             [ Html.div []
