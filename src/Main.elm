@@ -516,11 +516,13 @@ cardView msg opacity cursor refWidth card =
                 ]
                 []
             , Svg.text_
-                [ Svg.Attributes.x ((width * 0.13) |> String.fromFloat)
-                , Svg.Attributes.y ((width * 1.2) |> String.fromFloat)
+                [ Svg.Attributes.x ((width * 0.5) |> String.fromFloat)
+                , Svg.Attributes.y ((height * 0.6) |> String.fromFloat)
                 , Svg.Attributes.fill "white"
                 , Svg.Attributes.fontSize (width * 1.2 |> String.fromFloat)
                 , Svg.Attributes.fontFamily "monospace"
+                , Svg.Attributes.textAnchor "middle"
+                , Svg.Attributes.dominantBaseline "middle"
                 ]
                 [ Svg.text (card.rank |> Rank.toString) ]
             ]
