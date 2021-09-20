@@ -695,13 +695,13 @@ modalView model =
                     )
             )
         |> Modal.footer []
-            [ Button.button [ Button.light, Button.onClick CloseBoardSelectModal ] [ Html.text "Cancel" ]
+            [ Button.button [ Button.light, Button.onClick CloseBoardSelectModal ] [ Html.text "CANCEL" ]
             , Button.button
                 [ Button.success
                 , Button.onClick ConfirmBoardSelection
                 , Button.disabled (isBoardSelectionValid model |> not)
                 ]
-                [ Html.text "Confirm" ]
+                [ Html.text "CONFIRM" ]
             ]
         |> Modal.view model.boardSelectModalVisibility
 
