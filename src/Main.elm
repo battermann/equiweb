@@ -492,7 +492,7 @@ cardView msg opacity cursor refWidth card =
     Html.div
         ([ Html.Attributes.style "width" refWidth
          , Html.Attributes.style "min-height" "40px"
-         , Html.Attributes.style "min-width" "29px"
+         , Html.Attributes.style "min-width" "18px"
          , Html.Attributes.style "max-height" "80px"
          , Html.Attributes.style "max-width" "57px"
          , Html.Attributes.style "cursor" cursor
@@ -563,7 +563,7 @@ inputFormView model =
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
-                [ boardView "6vmin" (model.simulationRequestForm.board.validated |> Result.withDefault []) ]
+                [ boardView "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ]
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
@@ -667,6 +667,7 @@ modalView : Model -> Html Msg
 modalView model =
     Modal.config CloseBoardSelectModal
         |> Modal.large
+        |> Modal.attrs [ Html.Attributes.class "modal-fullscreen-lg-down" ]
         |> Modal.body []
             (Suit.all
                 |> List.map
@@ -689,7 +690,7 @@ modalView model =
                                             , Html.Attributes.style "user-select" "none"
                                             , Html.Attributes.style "margin" "1px"
                                             ]
-                                            [ Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardOpacity model card) "pointer" "6vmin" card) ]
+                                            [ Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardOpacity model card) "pointer" "6vw" card) ]
                                     )
                             )
                     )
