@@ -655,7 +655,7 @@ rangeInputView position field result =
                             , Button.disabled (rewritable field |> not)
                             , Button.attrs [ Html.Attributes.tabindex -1 ]
                             ]
-                            [ Html.text "Rewrite" ]
+                            [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
                         ]
                     |> InputGroup.view
                 ]
