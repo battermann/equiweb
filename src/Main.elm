@@ -17,6 +17,7 @@ import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
 import Browser
+import Browser.Events
 import Form
 import Html exposing (Html)
 import Html.Attributes
@@ -28,6 +29,7 @@ import Keyboard exposing (RawKey)
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
+import Poker.Hand as Hand exposing (Hand)
 import Poker.Position as Position exposing (Position(..))
 import Poker.Range as Range exposing (HandRange)
 import Poker.Rank as Rank
@@ -120,15 +122,26 @@ type alias SimulationResult =
     }
 
 
+type Mouse
+    = Released
+    | Pressed
+
+
 type alias Model =
     { simulationRequestForm : SimulationRequestForm
     , currentApiResponse : WebData SimulationResult
     , results : List SimulationResult
     , boardSelectModalVisibility : Modal.Visibility
+    , rangeSelectionModalVisibility : Modal.Visibility
     , boardSelection : List Card
+    , rangeSelection : List HandRange
+    , rangeSelectionPosition : Position
     , alert : Maybe String
     , cardUnderMouse : Maybe Card
     , ignoreCardHoverState : Bool
+    , mouse : Mouse
+    , handUnderMouse : Maybe Hand
+    , ignoreRangeHoverState : Bool
     }
 
 
@@ -148,10 +161,16 @@ init =
     , currentApiResponse = RemoteData.NotAsked
     , results = []
     , boardSelectModalVisibility = Modal.hidden
+    , rangeSelectionModalVisibility = Modal.hidden
     , boardSelection = []
+    , rangeSelection = []
+    , rangeSelectionPosition = UTG
     , alert = Nothing
     , cardUnderMouse = Nothing
     , ignoreCardHoverState = False
+    , mouse = Released
+    , handUnderMouse = Nothing
+    , ignoreRangeHoverState = False
     }
 
 
@@ -163,12 +182,19 @@ type Msg
     | RewriteRange Position
     | ShowBoardSelectModal
     | CloseBoardSelectModal
+    | ShowRangeSelectionModal Position
+    | CloseRangeSelectionModal
     | ToggleBoardSelection Card
     | ConfirmBoardSelection
     | Reset
     | KeyDown RawKey
     | CardHover (Maybe Card)
     | ClearBoard
+    | ConfirmRangeSelection
+    | MouseDown
+    | MouseUp
+    | ClearRange
+    | HandHover (Maybe Hand)
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
@@ -296,31 +322,7 @@ update msg model =
             ( { model | simulationRequestForm = setBoard str model.simulationRequestForm }, Cmd.none )
 
         RewriteRange position ->
-            let
-                form =
-                    model.simulationRequestForm
-
-                rangeToString =
-                    List.map Range.toString >> String.join ","
-            in
-            case position of
-                UTG ->
-                    ( { model | simulationRequestForm = { form | utg = Form.rewrite form.utg rangeToString } }, Cmd.none )
-
-                MP ->
-                    ( { model | simulationRequestForm = { form | mp = Form.rewrite form.mp rangeToString } }, Cmd.none )
-
-                CO ->
-                    ( { model | simulationRequestForm = { form | co = Form.rewrite form.co rangeToString } }, Cmd.none )
-
-                BU ->
-                    ( { model | simulationRequestForm = { form | bu = Form.rewrite form.bu rangeToString } }, Cmd.none )
-
-                SB ->
-                    ( { model | simulationRequestForm = { form | sb = Form.rewrite form.sb rangeToString } }, Cmd.none )
-
-                BB ->
-                    ( { model | simulationRequestForm = { form | bb = Form.rewrite form.bb rangeToString } }, Cmd.none )
+            ( { model | simulationRequestForm = rewrite position model.simulationRequestForm }, Cmd.none )
 
         CloseBoardSelectModal ->
             ( { model | boardSelectModalVisibility = Modal.hidden }
@@ -351,11 +353,19 @@ update msg model =
         KeyDown rawKey ->
             case Keyboard.anyKeyUpper rawKey of
                 Just Keyboard.Escape ->
-                    ( { model | boardSelectModalVisibility = Modal.hidden }, Cmd.none )
+                    ( { model
+                        | boardSelectModalVisibility = Modal.hidden
+                        , rangeSelectionModalVisibility = Modal.hidden
+                      }
+                    , Cmd.none
+                    )
 
                 Just Keyboard.Enter ->
                     if model.boardSelectModalVisibility == Modal.shown then
                         confirmBoardSelection model
+
+                    else if model.rangeSelectionModalVisibility == Modal.shown then
+                        confirmRangeSelection model.rangeSelectionPosition model
 
                     else
                         sendSimulationRequest model
@@ -369,12 +379,124 @@ update msg model =
         ClearBoard ->
             ( { model | boardSelection = [] }, Cmd.none )
 
+        ShowRangeSelectionModal position ->
+            let
+                range =
+                    case position of
+                        UTG ->
+                            model.simulationRequestForm.utg.validated |> Result.withDefault []
+
+                        MP ->
+                            model.simulationRequestForm.mp.validated |> Result.withDefault []
+
+                        CO ->
+                            model.simulationRequestForm.co.validated |> Result.withDefault []
+
+                        BU ->
+                            model.simulationRequestForm.bu.validated |> Result.withDefault []
+
+                        SB ->
+                            model.simulationRequestForm.sb.validated |> Result.withDefault []
+
+                        BB ->
+                            model.simulationRequestForm.bb.validated |> Result.withDefault []
+            in
+            ( { model
+                | rangeSelectionModalVisibility = Modal.shown
+                , rangeSelection = range
+                , rangeSelectionPosition = position
+              }
+            , Cmd.none
+            )
+
+        CloseRangeSelectionModal ->
+            ( { model | rangeSelectionModalVisibility = Modal.hidden, rangeSelection = [] }, Cmd.none )
+
+        ConfirmRangeSelection ->
+            confirmRangeSelection model.rangeSelectionPosition model
+
+        MouseDown ->
+            case model.handUnderMouse of
+                Just hand ->
+                    ( toggleHandSelection (Range.fromHand hand) { model | mouse = Pressed }, Cmd.none )
+
+                Nothing ->
+                    ( { model | mouse = Pressed }, Cmd.none )
+
+        MouseUp ->
+            ( { model | mouse = Released }, Cmd.none )
+
+        ClearRange ->
+            ( { model | rangeSelection = [] }, Cmd.none )
+
+        HandHover (Just hand) ->
+            if model.mouse == Pressed then
+                ( toggleHandSelection (Range.fromHand hand) { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }, Cmd.none )
+
+            else
+                ( { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }, Cmd.none )
+
+        HandHover Nothing ->
+            ( { model | handUnderMouse = Nothing, ignoreRangeHoverState = False }, Cmd.none )
+
+
+toggleHandSelection : HandRange -> Model -> Model
+toggleHandSelection handRange model =
+    if model.rangeSelection |> List.member handRange then
+        { model | rangeSelection = model.rangeSelection |> List.filter ((/=) handRange), ignoreRangeHoverState = True }
+
+    else
+        { model | rangeSelection = model.rangeSelection ++ [ handRange ], ignoreRangeHoverState = True }
+
+
+rewrite : Position -> SimulationRequestForm -> SimulationRequestForm
+rewrite position form =
+    let
+        rangeToString =
+            List.map Range.toString >> String.join ","
+    in
+    case position of
+        UTG ->
+            { form | utg = Form.rewrite form.utg rangeToString }
+
+        MP ->
+            { form | mp = Form.rewrite form.mp rangeToString }
+
+        CO ->
+            { form | co = Form.rewrite form.co rangeToString }
+
+        BU ->
+            { form | bu = Form.rewrite form.bu rangeToString }
+
+        SB ->
+            { form | sb = Form.rewrite form.sb rangeToString }
+
+        BB ->
+            { form | bb = Form.rewrite form.bb rangeToString }
+
+
+confirmRangeSelection : Position -> Model -> ( Model, Cmd Msg )
+confirmRangeSelection position model =
+    let
+        form =
+            setRange position (model.rangeSelection |> List.map Range.toString |> String.join ",") model.simulationRequestForm
+                |> rewrite position
+    in
+    ( { model
+        | rangeSelectionModalVisibility = Modal.hidden
+        , simulationRequestForm = form
+        , rangeSelection = []
+      }
+    , Cmd.none
+    )
+
 
 confirmBoardSelection : Model -> ( Model, Cmd Msg )
 confirmBoardSelection model =
     ( { model
         | boardSelectModalVisibility = Modal.hidden
         , simulationRequestForm = setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.simulationRequestForm
+        , boardSelection = []
       }
     , Cmd.none
     )
@@ -436,7 +558,8 @@ view model =
         [ Grid.container []
             [ Html.div []
                 [ calculatorView model
-                , modalView model
+                , boardSelectionModalView model
+                , rangeSelectionModalView model
                 ]
             ]
         ]
@@ -447,8 +570,6 @@ loadingView : Html Msg
 loadingView =
     Html.div []
         [ Html.div [ Flex.block, Flex.row, Flex.alignItemsCenter, Flex.justifyAround ] [ Spinner.spinner [ Spinner.large ] [] ]
-
-        -- , Html.div [ Html.Attributes.align "center", Spacing.mt2 ] [ Html.text "You're request is processing. Sometimes this takes a while. But no worries, susequent requests will be faster. Thanks for your patience." ]
         ]
 
 
@@ -681,6 +802,12 @@ rangeInputView position field result =
                             , Button.attrs [ Html.Attributes.tabindex -1 ]
                             ]
                             [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
+                        , InputGroup.button
+                            [ Button.outlineSecondary
+                            , Button.onClick (ShowRangeSelectionModal position)
+                            , Button.attrs [ Html.Attributes.tabindex -1 ]
+                            ]
+                            [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
                         ]
                     |> InputGroup.view
                 ]
@@ -700,8 +827,8 @@ rewritable field =
 
 
 boardCardView : String -> Card -> Html Msg
-boardCardView hight =
-    cardView Nothing Selected "default" hight
+boardCardView height =
+    cardView Nothing Selected "default" height
 
 
 boardView : String -> List Card -> Html Msg
@@ -730,8 +857,8 @@ streetsView height cards =
             []
 
 
-modalView : Model -> Html Msg
-modalView model =
+boardSelectionModalView : Model -> Html Msg
+boardSelectionModalView model =
     Modal.config CloseBoardSelectModal
         |> Modal.large
         |> Modal.attrs [ Html.Attributes.class "modal-fullscreen-lg-down" ]
@@ -882,10 +1009,131 @@ cardSelectState card model =
                 NotSelected
 
 
+rangeSelectionModalView : Model -> Html Msg
+rangeSelectionModalView model =
+    Modal.config CloseRangeSelectionModal
+        |> Modal.large
+        |> Modal.attrs [ Html.Attributes.class "modal-fullscreen-lg-down" ]
+        |> Modal.body []
+            [ Html.div [ Flex.row, Flex.block, Flex.justifyAround ]
+                [ Html.div []
+                    (Hand.grid
+                        |> List.map
+                            (\row ->
+                                Html.div
+                                    [ Flex.block, Flex.row ]
+                                    (row
+                                        |> List.map
+                                            (\hand ->
+                                                cellView
+                                                    (rangeSelectState hand model)
+                                                    "5vm"
+                                                    hand
+                                            )
+                                    )
+                            )
+                    )
+                ]
+            ]
+        |> Modal.footer []
+            [ Button.button
+                [ Button.light
+                , Button.onClick ClearRange
+                ]
+                [ Html.text "CLEAR ALL" ]
+            , Button.button [ Button.light, Button.onClick CloseRangeSelectionModal ] [ Html.text "CANCEL" ]
+            , Button.button
+                [ Button.success
+                , Button.onClick ConfirmRangeSelection
+                ]
+                [ Html.text "CONFIRM" ]
+            ]
+        |> Modal.view model.rangeSelectionModalVisibility
+
+
+rangeSelectState : Hand -> Model -> SelectState
+rangeSelectState hand model =
+    case model.handUnderMouse of
+        Just hum ->
+            if hum == hand && not model.ignoreRangeHoverState then
+                MouseOver
+
+            else if model.rangeSelection |> List.member (Range.fromHand hand) then
+                Selected
+
+            else
+                NotSelected
+
+        Nothing ->
+            if model.rangeSelection |> List.member (Range.fromHand hand) then
+                Selected
+
+            else
+                NotSelected
+
+
 type SelectState
     = Selected
     | NotSelected
     | MouseOver
+
+
+cellView : SelectState -> String -> Hand -> Html Msg
+cellView cs size hand =
+    let
+        ( fontColor, color, opacity ) =
+            case cs of
+                Selected ->
+                    ( "white", "#9b5378", "1" )
+
+                NotSelected ->
+                    ( "#aaaaaa", "#eeeeee", "1" )
+
+                MouseOver ->
+                    ( "white", "#9b5378", "0.5" )
+    in
+    Html.div
+        [ Html.Attributes.style "width" size
+        , Html.Attributes.style "height" size
+        , Html.Attributes.style "min-height" "20px"
+        , Html.Attributes.style "min-width" "18px"
+        , Html.Attributes.style "max-height" "50px"
+        , Html.Attributes.style "max-width" "50px"
+        , Html.Attributes.style "cursor" "pointer"
+        , Html.Attributes.style "margin" "1px"
+        , Html.Attributes.style "user-select" "none"
+        , Html.Attributes.style "opacity" opacity
+
+        -- , Html.Events.onClick msg
+        , Html.Events.onMouseEnter (HandHover (Just hand))
+        , Html.Events.onMouseLeave (HandHover Nothing)
+        ]
+        [ Svg.svg
+            [ Svg.Attributes.width "100%"
+            , Svg.Attributes.height "100%"
+            , Svg.Attributes.viewBox "0 0 100 100"
+            ]
+            [ Svg.rect
+                [ Svg.Attributes.x "0"
+                , Svg.Attributes.y "0"
+                , Svg.Attributes.width "100"
+                , Svg.Attributes.height "100"
+                , Svg.Attributes.rx "15"
+                , Svg.Attributes.ry "15"
+                , Svg.Attributes.fill color
+                ]
+                []
+            , Svg.text_
+                [ Svg.Attributes.x "50"
+                , Svg.Attributes.y "50"
+                , Svg.Attributes.fill fontColor
+                , Svg.Attributes.fontSize "44"
+                , Svg.Attributes.textAnchor "middle"
+                , Svg.Attributes.dominantBaseline "middle"
+                ]
+                [ Svg.text (hand |> Hand.toString) ]
+            ]
+        ]
 
 
 
@@ -896,4 +1144,6 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ Keyboard.downs KeyDown
+        , Browser.Events.onMouseDown (Decode.succeed MouseDown)
+        , Browser.Events.onMouseUp (Decode.succeed MouseUp)
         ]

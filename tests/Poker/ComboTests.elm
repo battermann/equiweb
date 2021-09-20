@@ -4,7 +4,7 @@ import Expect
 import Fuzz exposing (..)
 import List.Extra
 import Parser
-import Poker.Card as Card exposing (Card)
+import Poker.Card exposing (Card)
 import Poker.Combo as Combo
 import Poker.Rank as Rank
 import Poker.Suit as Suit
