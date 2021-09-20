@@ -1,10 +1,11 @@
-module Poker.Range exposing (HandRange, fromCombo, fromHand, isCombo, isHand, parseAndNormalize, toString)
+module Poker.Range exposing (HandRange, fromCombo, fromHand, isCombo, isHand, parseAndNormalize, rangesToNormalizedString, toString)
 
 import List.Extra
 import Maybe.Extra
 import Parser exposing (Parser)
 import Poker.Combo as Combo exposing (Combo)
 import Poker.Hand as Hand exposing (Hand)
+import Poker.Ranges as Ranges exposing (Ranges(..))
 import Result.Extra
 
 
@@ -120,3 +121,43 @@ order hr1 hr2 =
 
         ( Combo c1, Combo c2 ) ->
             Combo.order c1 c2
+
+
+magic : List HandRange -> List Ranges
+magic =
+    List.foldl fun []
+
+
+fun : HandRange -> List Ranges -> List Ranges
+fun hr ranges =
+    case ranges of
+        h :: t ->
+            combine hr h ++ t
+
+        [] ->
+            [ handRangeToRanges hr ]
+
+
+handRangeToRanges : HandRange -> Ranges
+handRangeToRanges handRange =
+    case handRange of
+        Combo c ->
+            SingleCombo c
+
+        Hand h ->
+            Hand.toHandRanges h
+
+
+combine : HandRange -> Ranges -> List Ranges
+combine handRange ranges =
+    case handRange of
+        Combo c ->
+            [ SingleCombo c, ranges ]
+
+        Hand h ->
+            Hand.magic h ranges
+
+
+rangesToNormalizedString : List HandRange -> String
+rangesToNormalizedString =
+    removeRedundantCombos >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","

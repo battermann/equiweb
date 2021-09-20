@@ -316,10 +316,10 @@ update msg model =
             sendSimulationRequest model
 
         RangeInput position str ->
-            ( { model | simulationRequestForm = setRange position str model.simulationRequestForm }, Cmd.none )
+            ( { model | simulationRequestForm = setRange position str model.simulationRequestForm, currentApiResponse = RemoteData.NotAsked }, Cmd.none )
 
         BoardInput str ->
-            ( { model | simulationRequestForm = setBoard str model.simulationRequestForm }, Cmd.none )
+            ( { model | simulationRequestForm = setBoard str model.simulationRequestForm, currentApiResponse = RemoteData.NotAsked }, Cmd.none )
 
         RewriteRange position ->
             ( { model | simulationRequestForm = rewrite position model.simulationRequestForm }, Cmd.none )
@@ -451,28 +451,24 @@ toggleHandSelection handRange model =
 
 rewrite : Position -> SimulationRequestForm -> SimulationRequestForm
 rewrite position form =
-    let
-        rangeToString =
-            List.map Range.toString >> String.join ","
-    in
     case position of
         UTG ->
-            { form | utg = Form.rewrite form.utg rangeToString }
+            { form | utg = Form.rewrite form.utg Range.rangesToNormalizedString }
 
         MP ->
-            { form | mp = Form.rewrite form.mp rangeToString }
+            { form | mp = Form.rewrite form.mp Range.rangesToNormalizedString }
 
         CO ->
-            { form | co = Form.rewrite form.co rangeToString }
+            { form | co = Form.rewrite form.co Range.rangesToNormalizedString }
 
         BU ->
-            { form | bu = Form.rewrite form.bu rangeToString }
+            { form | bu = Form.rewrite form.bu Range.rangesToNormalizedString }
 
         SB ->
-            { form | sb = Form.rewrite form.sb rangeToString }
+            { form | sb = Form.rewrite form.sb Range.rangesToNormalizedString }
 
         BB ->
-            { form | bb = Form.rewrite form.bb rangeToString }
+            { form | bb = Form.rewrite form.bb Range.rangesToNormalizedString }
 
 
 confirmRangeSelection : Position -> Model -> ( Model, Cmd Msg )
@@ -486,6 +482,7 @@ confirmRangeSelection position model =
         | rangeSelectionModalVisibility = Modal.hidden
         , simulationRequestForm = form
         , rangeSelection = []
+        , currentApiResponse = RemoteData.NotAsked
       }
     , Cmd.none
     )
@@ -497,6 +494,7 @@ confirmBoardSelection model =
         | boardSelectModalVisibility = Modal.hidden
         , simulationRequestForm = setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.simulationRequestForm
         , boardSelection = []
+        , currentApiResponse = RemoteData.NotAsked
       }
     , Cmd.none
     )
@@ -823,7 +821,7 @@ rangeInputView position field result =
 
 rewritable : Form.Field (List HandRange) -> Bool
 rewritable field =
-    field.value /= (field.validated |> Result.withDefault [] |> List.map Range.toString |> String.join ",")
+    field.value /= (field.validated |> Result.withDefault [] |> Range.rangesToNormalizedString)
 
 
 boardCardView : String -> Card -> Html Msg
@@ -974,7 +972,7 @@ rowView position resultLine =
         Just result ->
             [ Table.tr []
                 [ Table.td [] [ Html.text (position |> Position.toString) ]
-                , Table.td [] [ Html.text (result.range |> List.map Range.toString |> String.join ",") ]
+                , Table.td [] [ Html.text (result.range |> Range.rangesToNormalizedString) ]
                 , Table.td [] [ Html.text (Round.round 2 (result.equity * 100) ++ "%") ]
                 ]
             ]
