@@ -22,7 +22,6 @@
             "krisajenkins/remotedata": "6.0.1",
             "myrho/elm-round": "1.0.4",
             "ohanhi/keyboard": "2.0.1",
-            "robinheghan/keyboard-events": "1.0.0",
             "rundis/elm-bootstrap": "5.2.0"
         },
         "indirect": {

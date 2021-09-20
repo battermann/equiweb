@@ -1,6 +1,7 @@
 module Poker.Card exposing
     ( Card
     , all
+    , order
     , parser
     , toChar
     , toString
@@ -193,3 +194,13 @@ parser =
     Parser.succeed Card
         |= Rank.parser
         |= Suit.parser
+
+
+order : Card -> Card -> Order
+order card1 card2 =
+    case Rank.order card1.rank card2.rank of
+        EQ ->
+            Suit.order card1.suit card2.suit
+
+        orElse ->
+            orElse

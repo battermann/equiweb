@@ -1,10 +1,11 @@
-module Poker.Hand exposing (Hand, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, pair, parser, suited, toString)
+module Poker.Hand exposing (Hand, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, order, pair, parser, suited, toHandRanges, toString)
 
 import List
 import Maybe.Extra
 import Parser exposing ((|.), (|=), Parser)
 import Poker.Card exposing (Card)
 import Poker.Combo as Combo exposing (Combo)
+import Poker.Ranges exposing (Ranges(..))
 import Poker.Rank as Rank exposing (Rank)
 import Poker.Suit as Suit
 
@@ -337,3 +338,138 @@ validateRangePlus hand =
 
         Pair r ->
             Parser.succeed (Rank.from r |> List.map Pair)
+
+
+order : Hand -> Hand -> Order
+order lhs rhs =
+    case ( lhs, rhs ) of
+        ( Pair r1, Pair r2 ) ->
+            if r1 |> Rank.gt r2 then
+                GT
+
+            else if r1 |> Rank.lt r2 then
+                LT
+
+            else
+                EQ
+
+        ( Pair _, _ ) ->
+            GT
+
+        ( _, Pair _ ) ->
+            LT
+
+        ( Suited _ _, Offsuit _ _ ) ->
+            GT
+
+        ( Suited h1 l1, Suited h2 l2 ) ->
+            if h1 |> Rank.gt h2 then
+                GT
+
+            else if h1 |> Rank.lt h2 then
+                LT
+
+            else if l1 |> Rank.gt l2 then
+                GT
+
+            else if l1 |> Rank.lt l2 then
+                LT
+
+            else
+                EQ
+
+        ( _, Suited _ _ ) ->
+            LT
+
+        ( Offsuit h1 l1, Offsuit h2 l2 ) ->
+            if h1 |> Rank.gt h2 then
+                GT
+
+            else if h1 |> Rank.lt h2 then
+                LT
+
+            else if l1 |> Rank.gt l2 then
+                GT
+
+            else if l1 |> Rank.lt l2 then
+                LT
+
+            else
+                EQ
+
+
+toHandRanges : Hand -> Ranges
+toHandRanges hand =
+    case hand of
+        Pair Rank.Ace ->
+            PairPlus Rank.Ace
+
+        Pair belowAce ->
+            PairRange belowAce belowAce
+
+        Suited Rank.Ace l ->
+            SuitedPlus Rank.Ace l
+
+        Suited belowAce l ->
+            SuitedRange belowAce l l
+
+        Offsuit Rank.Ace l ->
+            OffsuitPlus Rank.Ace l
+
+        Offsuit belowAce l ->
+            OffsuitRange belowAce l l
+
+
+magic : Hand -> Ranges -> List Ranges
+magic hand ranges =
+    case ( hand, ranges ) of
+        ( Pair low, PairPlus high ) ->
+            if Rank.isConnected high low then
+                [ PairPlus low ]
+
+            else
+                [ toHandRanges hand, ranges ]
+
+        ( Pair lowest, PairRange high low ) ->
+            if Rank.isConnected low lowest then
+                [ PairRange high lowest ]
+
+            else
+                [ toHandRanges hand, ranges ]
+
+        ( Pair _, _ ) ->
+            [ toHandRanges hand, ranges ]
+
+        ( Suited high lowest, SuitedPlus otherHigh low ) ->
+            if high == otherHigh && Rank.isConnected low lowest then
+                [ SuitedPlus high lowest ]
+
+            else
+                [ toHandRanges hand, ranges ]
+
+        ( Suited high lowest, SuitedRange otherHigh lowTo lowFrom ) ->
+            if high == otherHigh && Rank.isConnected lowFrom lowest then
+                [ SuitedRange high lowTo lowest ]
+
+            else
+                [ toHandRanges hand, ranges ]
+
+        ( Suited _ _, _ ) ->
+            [ toHandRanges hand, ranges ]
+
+        ( Offsuit high lowest, OffsuitPlus otherHigh low ) ->
+            if high == otherHigh && Rank.isConnected low lowest then
+                [ OffsuitPlus high lowest ]
+
+            else
+                [ toHandRanges hand, ranges ]
+
+        ( Offsuit high lowest, OffsuitRange otherHigh lowTo lowFrom ) ->
+            if high == otherHigh && Rank.isConnected lowFrom lowest then
+                [ OffsuitRange high lowTo lowest ]
+
+            else
+                [ toHandRanges hand, ranges ]
+
+        ( Offsuit _ _, _ ) ->
+            [ toHandRanges hand, ranges ]

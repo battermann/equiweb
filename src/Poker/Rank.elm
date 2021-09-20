@@ -1,4 +1,4 @@
-module Poker.Rank exposing (Rank(..), all, from, gt, gte, lt, lte, parser, range, toString)
+module Poker.Rank exposing (Rank(..), all, from, gt, gte, isConnected, lt, lte, order, parser, range, toString)
 
 import Parser exposing (Parser)
 
@@ -82,16 +82,16 @@ all =
 
 from : Rank -> List Rank
 from rank =
-    all |> List.reverse |> List.filter (\r -> rankToInt r >= rankToInt rank)
+    all |> List.reverse |> List.filter (\r -> toInt r >= toInt rank)
 
 
 range : Rank -> Rank -> List Rank
 range r1 r2 =
     if gt r1 r2 then
-        all |> List.reverse |> List.filter (\r -> (rankToInt r >= rankToInt r1) && (rankToInt r <= rankToInt r2))
+        all |> List.reverse |> List.filter (\r -> (toInt r >= toInt r1) && (toInt r <= toInt r2))
 
     else
-        all |> List.reverse |> List.filter (\r -> (rankToInt r >= rankToInt r2) && (rankToInt r <= rankToInt r1))
+        all |> List.reverse |> List.filter (\r -> (toInt r >= toInt r2) && (toInt r <= toInt r1))
 
 
 gt : Rank -> Rank -> Bool
@@ -116,11 +116,11 @@ lte =
 
 compare : (Int -> Int -> Bool) -> Rank -> Rank -> Bool
 compare f lhs rhs =
-    f (rankToInt rhs) (rankToInt lhs)
+    f (toInt rhs) (toInt lhs)
 
 
-rankToInt : Rank -> Int
-rankToInt rank =
+toInt : Rank -> Int
+toInt rank =
     case rank of
         Two ->
             2
@@ -184,3 +184,20 @@ parser =
         , Parser.symbol "3" |> Parser.map (always Three)
         , Parser.symbol "2" |> Parser.map (always Two)
         ]
+
+
+order : Rank -> Rank -> Order
+order r1 r2 =
+    if r1 |> gt r2 then
+        GT
+
+    else if r1 |> lt r2 then
+        LT
+
+    else
+        EQ
+
+
+isConnected : Rank -> Rank -> Bool
+isConnected r1 r2 =
+    abs (toInt r1 - toInt r2) == 1

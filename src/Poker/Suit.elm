@@ -1,4 +1,4 @@
-module Poker.Suit exposing (Suit(..), all, gt, gte, lt, lte, parser, suitCombinations, suitToChar, toString)
+module Poker.Suit exposing (Suit(..), all, gt, gte, lt, lte, order, parser, suitCombinations, suitToChar, toString)
 
 import List.Extra
 import Parser
@@ -110,3 +110,15 @@ parser =
         , Parser.symbol "d" |> Parser.map (always Diamond)
         , Parser.symbol "D" |> Parser.map (always Diamond)
         ]
+
+
+order : Suit -> Suit -> Order
+order lhs rhs =
+    if lhs |> gt rhs then
+        GT
+
+    else if lhs |> lt rhs then
+        LT
+
+    else
+        EQ

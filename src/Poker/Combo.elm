@@ -1,4 +1,4 @@
-module Poker.Combo exposing (Combo, all, combo, parser, toString)
+module Poker.Combo exposing (Combo, all, combo, order, parser, toString)
 
 import List.Extra
 import Maybe.Extra
@@ -66,3 +66,13 @@ parser =
             |= Card.parser
             |. Parser.end
         )
+
+
+order : Combo -> Combo -> Order
+order (Combo h1 l1) (Combo h2 l2) =
+    case Card.order h1 h2 of
+        EQ ->
+            Card.order l1 l2
+
+        orElse ->
+            orElse
