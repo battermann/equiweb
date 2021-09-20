@@ -24,6 +24,7 @@ import Html.Events
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline as P
+import Keyboard exposing (RawKey)
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
@@ -135,7 +136,7 @@ main =
         { init = \_ -> ( init, Cmd.none )
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
 
 
@@ -151,7 +152,7 @@ init =
 
 
 type Msg
-    = SimulationRequestSend
+    = SendSimulationRequest
     | ApiResponseReceived (WebData ApiResponse)
     | RangeInput Position String
     | BoardInput String
@@ -161,115 +162,126 @@ type Msg
     | ToggleBoardSelection Card
     | ConfirmBoardSelection
     | Reset
+    | KeyDown RawKey
+
+
+handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
+handleApiResponse model result =
+    let
+        updateSimulationResult ( position, range, equity ) simulationResult =
+            case position of
+                UTG ->
+                    { simulationResult | utg = Just (ResultLine range equity) }
+
+                MP ->
+                    { simulationResult | mp = Just (ResultLine range equity) }
+
+                CO ->
+                    { simulationResult | co = Just (ResultLine range equity) }
+
+                BU ->
+                    { simulationResult | bu = Just (ResultLine range equity) }
+
+                SB ->
+                    { simulationResult | sb = Just (ResultLine range equity) }
+
+                BB ->
+                    { simulationResult | bb = Just (ResultLine range equity) }
+
+        sr =
+            result
+                |> RemoteData.map
+                    (\res ->
+                        [ ( model.simulationRequestForm.utg.validated |> Result.withDefault "", UTG )
+                        , ( model.simulationRequestForm.mp.validated |> Result.withDefault "", MP )
+                        , ( model.simulationRequestForm.co.validated |> Result.withDefault "", CO )
+                        , ( model.simulationRequestForm.bu.validated |> Result.withDefault "", BU )
+                        , ( model.simulationRequestForm.sb.validated |> Result.withDefault "", SB )
+                        , ( model.simulationRequestForm.bb.validated |> Result.withDefault "", BB )
+                        ]
+                            |> List.filter (\( r, _ ) -> not <| String.isEmpty r)
+                            |> List.map2 (\e ( r, p ) -> ( p, r, e ))
+                                ([ Just res.equityPlayer1
+                                 , Just res.equityPlayer2
+                                 , res.equityPlayer3
+                                 , res.equityPlayer4
+                                 , res.equityPlayer5
+                                 , res.equityPlayer6
+                                 ]
+                                    |> Maybe.Extra.values
+                                )
+                            |> List.foldl
+                                updateSimulationResult
+                                (SimulationResult
+                                    (model.simulationRequestForm.board.validated |> Result.withDefault [])
+                                    Nothing
+                                    Nothing
+                                    Nothing
+                                    Nothing
+                                    Nothing
+                                    Nothing
+                                )
+                    )
+    in
+    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault []) ++ model.results }, Cmd.none )
+
+
+sendSimulationRequest : Model -> ( Model, Cmd Msg )
+sendSimulationRequest model =
+    let
+        ranges =
+            [ model.simulationRequestForm.utg.validated
+            , model.simulationRequestForm.mp.validated
+            , model.simulationRequestForm.co.validated
+            , model.simulationRequestForm.bu.validated
+            , model.simulationRequestForm.sb.validated
+            , model.simulationRequestForm.bb.validated
+            ]
+                |> List.map Result.toMaybe
+                |> Maybe.Extra.values
+                |> List.filter (not << String.isEmpty)
+
+        formValid =
+            (Ok (\_ _ _ _ _ _ _ -> True)
+                |> Form.apply model.simulationRequestForm.board.validated
+                |> Form.apply model.simulationRequestForm.utg.validated
+                |> Form.apply model.simulationRequestForm.mp.validated
+                |> Form.apply model.simulationRequestForm.co.validated
+                |> Form.apply model.simulationRequestForm.bu.validated
+                |> Form.apply model.simulationRequestForm.sb.validated
+                |> Form.apply model.simulationRequestForm.bb.validated
+            )
+                |> Result.Extra.isOk
+    in
+    if not <| formValid then
+        ( { model
+            | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+            , alert = Just "Cannot not understand some of the inputs. Please check and try to correct."
+          }
+        , Cmd.none
+        )
+
+    else if (ranges |> List.length) < 2 then
+        ( { model | alert = Just "Please enter at least 2 ranges." }, Cmd.none )
+
+    else
+        ( { model
+            | currentApiResponse = RemoteData.Loading
+            , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+            , alert = Nothing
+          }
+        , sendSimulationRequestHttp (model.simulationRequestForm.board.validated |> Result.withDefault []) ranges
+        )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ApiResponseReceived result ->
-            let
-                updateSimulationResult ( position, range, equity ) simulationResult =
-                    case position of
-                        UTG ->
-                            { simulationResult | utg = Just (ResultLine range equity) }
+            handleApiResponse model result
 
-                        MP ->
-                            { simulationResult | mp = Just (ResultLine range equity) }
-
-                        CO ->
-                            { simulationResult | co = Just (ResultLine range equity) }
-
-                        BU ->
-                            { simulationResult | bu = Just (ResultLine range equity) }
-
-                        SB ->
-                            { simulationResult | sb = Just (ResultLine range equity) }
-
-                        BB ->
-                            { simulationResult | bb = Just (ResultLine range equity) }
-
-                sr =
-                    result
-                        |> RemoteData.map
-                            (\res ->
-                                [ ( model.simulationRequestForm.utg.validated |> Result.withDefault "", UTG )
-                                , ( model.simulationRequestForm.mp.validated |> Result.withDefault "", MP )
-                                , ( model.simulationRequestForm.co.validated |> Result.withDefault "", CO )
-                                , ( model.simulationRequestForm.bu.validated |> Result.withDefault "", BU )
-                                , ( model.simulationRequestForm.sb.validated |> Result.withDefault "", SB )
-                                , ( model.simulationRequestForm.bb.validated |> Result.withDefault "", BB )
-                                ]
-                                    |> List.filter (\( r, _ ) -> not <| String.isEmpty r)
-                                    |> List.map2 (\e ( r, p ) -> ( p, r, e ))
-                                        ([ Just res.equityPlayer1
-                                         , Just res.equityPlayer2
-                                         , res.equityPlayer3
-                                         , res.equityPlayer4
-                                         , res.equityPlayer5
-                                         , res.equityPlayer6
-                                         ]
-                                            |> Maybe.Extra.values
-                                        )
-                                    |> List.foldl
-                                        updateSimulationResult
-                                        (SimulationResult
-                                            (model.simulationRequestForm.board.validated |> Result.withDefault [])
-                                            Nothing
-                                            Nothing
-                                            Nothing
-                                            Nothing
-                                            Nothing
-                                            Nothing
-                                        )
-                            )
-            in
-            ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault []) ++ model.results }, Cmd.none )
-
-        SimulationRequestSend ->
-            let
-                ranges =
-                    [ model.simulationRequestForm.utg.validated
-                    , model.simulationRequestForm.mp.validated
-                    , model.simulationRequestForm.co.validated
-                    , model.simulationRequestForm.bu.validated
-                    , model.simulationRequestForm.sb.validated
-                    , model.simulationRequestForm.bb.validated
-                    ]
-                        |> List.map Result.toMaybe
-                        |> Maybe.Extra.values
-                        |> List.filter (not << String.isEmpty)
-
-                formValid =
-                    (Ok (\_ _ _ _ _ _ _ -> True)
-                        |> Form.apply model.simulationRequestForm.board.validated
-                        |> Form.apply model.simulationRequestForm.utg.validated
-                        |> Form.apply model.simulationRequestForm.mp.validated
-                        |> Form.apply model.simulationRequestForm.co.validated
-                        |> Form.apply model.simulationRequestForm.bu.validated
-                        |> Form.apply model.simulationRequestForm.sb.validated
-                        |> Form.apply model.simulationRequestForm.bb.validated
-                    )
-                        |> Result.Extra.isOk
-            in
-            if not <| formValid then
-                ( { model
-                    | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-                    , alert = Just "Cannot not understand some of the inputs. Please check and try to correct."
-                  }
-                , Cmd.none
-                )
-
-            else if (ranges |> List.length) < 2 then
-                ( { model | alert = Just "Please enter at least 2 ranges." }, Cmd.none )
-
-            else
-                ( { model
-                    | currentApiResponse = RemoteData.Loading
-                    , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-                    , alert = Nothing
-                  }
-                , sendSimulationRequest (model.simulationRequestForm.board.validated |> Result.withDefault []) ranges
-                )
+        SendSimulationRequest ->
+            sendSimulationRequest model
 
         RangeInput position str ->
             ( { model | simulationRequestForm = setRange position str model.simulationRequestForm }, Cmd.none )
@@ -322,15 +334,35 @@ update msg model =
                 ( model, Cmd.none )
 
         ConfirmBoardSelection ->
-            ( { model
-                | boardSelectModalVisibility = Modal.hidden
-                , simulationRequestForm = setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.simulationRequestForm
-              }
-            , Cmd.none
-            )
+            confirmBoardSelection model
 
         Reset ->
             ( init |> (\m -> { m | results = model.results }), Cmd.none )
+
+        KeyDown rawKey ->
+            case Keyboard.anyKeyUpper rawKey of
+                Just Keyboard.Escape ->
+                    ( { model | boardSelectModalVisibility = Modal.hidden }, Cmd.none )
+
+                Just Keyboard.Enter ->
+                    if model.boardSelectModalVisibility == Modal.shown then
+                        confirmBoardSelection model
+
+                    else
+                        sendSimulationRequest model
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+confirmBoardSelection : Model -> ( Model, Cmd Msg )
+confirmBoardSelection model =
+    ( { model
+        | boardSelectModalVisibility = Modal.hidden
+        , simulationRequestForm = setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.simulationRequestForm
+      }
+    , Cmd.none
+    )
 
 
 
@@ -358,8 +390,8 @@ simulationResponseDecoder =
         |> P.required "equity_player_6" (Decode.nullable Decode.float)
 
 
-sendSimulationRequest : List Card -> List String -> Cmd Msg
-sendSimulationRequest board ranges =
+sendSimulationRequestHttp : List Card -> List String -> Cmd Msg
+sendSimulationRequestHttp board ranges =
     Http.get
         { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
         , url =
@@ -579,7 +611,7 @@ inputFormView model =
                     , Button.button
                         [ Button.success
                         , Button.attrs [ Size.w100, Html.Attributes.style "margin-left" "2px" ]
-                        , Button.onClick SimulationRequestSend
+                        , Button.onClick SendSimulationRequest
                         ]
                         [ Html.text "RUN" ]
                     ]
@@ -793,3 +825,14 @@ rowView position resultLine =
 
         Nothing ->
             []
+
+
+
+---- SUBSCRIPTIONS ----
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.batch
+        [ Keyboard.downs KeyDown
+        ]
