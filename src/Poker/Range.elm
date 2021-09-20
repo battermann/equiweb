@@ -102,4 +102,21 @@ parseAndNormalize rangeString =
         |> List.map (Parser.run parser)
         |> Result.Extra.combine
         |> Result.map (List.concat >> removeRedundantCombos)
+        |> Result.map (List.sortWith order >> List.reverse)
         |> Result.Extra.mapBoth (always [ "Range is not valid" ]) identity
+
+
+order : HandRange -> HandRange -> Order
+order hr1 hr2 =
+    case ( hr1, hr2 ) of
+        ( Hand h1, Hand h2 ) ->
+            Hand.order h1 h2
+
+        ( Hand _, _ ) ->
+            GT
+
+        ( _, Hand _ ) ->
+            LT
+
+        ( Combo c1, Combo c2 ) ->
+            Combo.order c1 c2

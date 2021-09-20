@@ -1,4 +1,4 @@
-module Poker.Hand exposing (Hand, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, pair, parser, suited, toString)
+module Poker.Hand exposing (Hand, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, order, pair, parser, suited, toString)
 
 import List
 import Maybe.Extra
@@ -337,3 +337,61 @@ validateRangePlus hand =
 
         Pair r ->
             Parser.succeed (Rank.from r |> List.map Pair)
+
+
+order : Hand -> Hand -> Order
+order lhs rhs =
+    case ( lhs, rhs ) of
+        ( Pair r1, Pair r2 ) ->
+            if r1 |> Rank.gt r2 then
+                GT
+
+            else if r1 |> Rank.lt r2 then
+                LT
+
+            else
+                EQ
+
+        ( Pair _, _ ) ->
+            GT
+
+        ( _, Pair _ ) ->
+            LT
+
+        ( Suited _ _, Offsuit _ _ ) ->
+            GT
+
+        ( Suited h1 l1, Suited h2 l2 ) ->
+            if h1 |> Rank.gt h2 then
+                GT
+
+            else if h1 |> Rank.lt h2 then
+                LT
+
+            else if l1 |> Rank.gt l2 then
+                GT
+
+            else if l1 |> Rank.lt l2 then
+                LT
+
+            else
+                EQ
+
+        ( _, Suited _ _ ) ->
+            LT
+
+        ( Offsuit h1 l1, Offsuit h2 l2 ) ->
+            if h1 |> Rank.gt h2 then
+                GT
+
+            else if h1 |> Rank.lt h2 then
+                LT
+
+            else if l1 |> Rank.gt l2 then
+                GT
+
+            else if l1 |> Rank.lt l2 then
+                LT
+
+            else
+                EQ

@@ -1,4 +1,4 @@
-module Poker.Rank exposing (Rank(..), all, from, gt, gte, lt, lte, parser, range, toString)
+module Poker.Rank exposing (Rank(..), all, from, gt, gte, lt, lte, order, parser, range, toString)
 
 import Parser exposing (Parser)
 
@@ -184,3 +184,15 @@ parser =
         , Parser.symbol "3" |> Parser.map (always Three)
         , Parser.symbol "2" |> Parser.map (always Two)
         ]
+
+
+order : Rank -> Rank -> Order
+order r1 r2 =
+    if r1 |> gt r2 then
+        GT
+
+    else if r1 |> lt r2 then
+        LT
+
+    else
+        EQ
