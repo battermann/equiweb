@@ -330,7 +330,7 @@ update msg model =
             )
 
         Reset ->
-            ( init, Cmd.none )
+            ( init |> (\m -> { m | results = model.results }), Cmd.none )
 
 
 
@@ -739,10 +739,14 @@ resultView result =
     Card.config [ Card.attrs [ Spacing.mb3 ], Card.outlineDark ]
         |> Card.headerH4 []
             [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
-                [ Html.div [ Size.h100 ]
-                    [ Html.text "Board: "
-                    , Html.text (result.board |> List.map Card.toString |> String.concat)
-                    ]
+                [ if result.board |> List.isEmpty |> not then
+                    Html.div [ Size.h100 ]
+                        [ Html.text "Board: "
+                        , Html.text (result.board |> List.map Card.toString |> String.concat)
+                        ]
+
+                  else
+                    Html.text "Preflop"
                 , boardView "10px" result.board
                 ]
             ]
