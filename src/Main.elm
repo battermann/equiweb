@@ -4,6 +4,7 @@ import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
 import Bootstrap.Card.Block as Block
+import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Bootstrap.Form.InputGroup as InputGroup
@@ -33,6 +34,7 @@ import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.Combo as Combo
+import Poker.Data as PositionRanges
 import Poker.Hand as Hand exposing (Hand)
 import Poker.Position as Position exposing (Position(..))
 import Poker.Range as Range exposing (HandRange)
@@ -150,6 +152,12 @@ type alias Model =
     , mouse : Mouse
     , handUnderMouse : Maybe Hand
     , ignoreRangeHoverState : Bool
+    , rangeDropdownStateUtg : Dropdown.State
+    , rangeDropdownStateMp : Dropdown.State
+    , rangeDropdownStateCo : Dropdown.State
+    , rangeDropdownStateBu : Dropdown.State
+    , rangeDropdownStateSb : Dropdown.State
+    , rangeDropdownStateBb : Dropdown.State
     }
 
 
@@ -188,36 +196,44 @@ init url key =
             , handUnderMouse = Nothing
             , ignoreRangeHoverState = False
             , navKey = key
+            , rangeDropdownStateUtg = Dropdown.initialState
+            , rangeDropdownStateMp = Dropdown.initialState
+            , rangeDropdownStateCo = Dropdown.initialState
+            , rangeDropdownStateBu = Dropdown.initialState
+            , rangeDropdownStateSb = Dropdown.initialState
+            , rangeDropdownStateBb = Dropdown.initialState
             }
 
 
 type Msg
-    = SendSimulationRequest
-    | ApiResponseReceived (WebData ApiResponse)
-    | RangeInput Position String
+    = ApiResponseReceived (WebData ApiResponse)
     | BoardInput String
-    | RewriteRange Position
-    | ShowBoardSelectModal
-    | CloseBoardSelectModal
-    | ShowRangeSelectionModal Position
-    | CloseRangeSelectionModal
-    | ToggleBoardSelection Card
-    | ConfirmBoardSelection
-    | KeyDown RawKey
     | CardHover (Maybe Card)
     | ClearBoard
+    | ClearRange
+    | ClickedLink UrlRequest
+    | CloseBoardSelectModal
+    | CloseRangeSelectionModal
+    | ConfirmBoardSelection
     | ConfirmRangeSelection
+    | HandHover (Maybe Hand)
+    | KeyDown RawKey
     | MouseDown
     | MouseUp
-    | ClearRange
-    | HandHover (Maybe Hand)
-    | UrlChange Url
-    | ClickedLink UrlRequest
-    | SelectPairs
-    | SelectSuitedAces
-    | SelectSuitedBroadways
+    | RangeDropDownMsg Position Dropdown.State
+    | RangeInput Position String
+    | RewriteRange Position
     | SelectOffsuitAces
     | SelectOffsuitBroadways
+    | SelectPairs
+    | SelectPresetRange Position String
+    | SelectSuitedAces
+    | SelectSuitedBroadways
+    | SendSimulationRequest
+    | ShowBoardSelectModal
+    | ShowRangeSelectionModal Position
+    | ToggleBoardSelection Card
+    | UrlChange Url
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
@@ -503,6 +519,34 @@ update msg model =
 
         SelectOffsuitBroadways ->
             ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitBroadways |> List.Extra.unique }, Cmd.none )
+
+        RangeDropDownMsg position state ->
+            case position of
+                UTG ->
+                    ( { model | rangeDropdownStateUtg = state }, Cmd.none )
+
+                MP ->
+                    ( { model | rangeDropdownStateMp = state }, Cmd.none )
+
+                CO ->
+                    ( { model | rangeDropdownStateCo = state }, Cmd.none )
+
+                BU ->
+                    ( { model | rangeDropdownStateBu = state }, Cmd.none )
+
+                SB ->
+                    ( { model | rangeDropdownStateSb = state }, Cmd.none )
+
+                BB ->
+                    ( { model | rangeDropdownStateBb = state }, Cmd.none )
+
+        SelectPresetRange position range ->
+            ( { model
+                | simulationRequestForm = setRange position range model.simulationRequestForm |> rewrite position
+                , currentApiResponse = RemoteData.NotAsked
+              }
+            , Cmd.none
+            )
 
 
 toggleHandSelection : HandRange -> Model -> Model
@@ -878,12 +922,12 @@ cardView msg selectState cursor refWidth card =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ rangeInputView UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map (\r -> r.utg) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , rangeInputView MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map (\r -> r.mp) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , rangeInputView CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map (\r -> r.co) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , rangeInputView BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map (\r -> r.bu) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , rangeInputView SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map (\r -> r.sb) |> RemoteData.toMaybe |> Maybe.andThen identity)
-        , rangeInputView BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map (\r -> r.bb) |> RemoteData.toMaybe |> Maybe.andThen identity)
+        [ rangeInputView UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map (\r -> r.utg) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (PositionRanges.all |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map (\r -> r.mp) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (PositionRanges.all |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map (\r -> r.co) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (PositionRanges.all |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map (\r -> r.bu) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (PositionRanges.all |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map (\r -> r.sb) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (PositionRanges.all |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map (\r -> r.bb) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (PositionRanges.all |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
         , Form.row
             []
             [ Form.col [ Col.sm10 ]
@@ -933,8 +977,8 @@ inputFormView model =
         ]
 
 
-rangeInputView : Position -> Form.Field (List HandRange) -> Maybe ResultLine -> Html Msg
-rangeInputView position field result =
+rangeInputView : Position -> Form.Field (List HandRange) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
+rangeInputView position field result dropdownState ranges =
     Form.row []
         [ Form.col []
             [ Form.group []
@@ -967,6 +1011,19 @@ rangeInputView position field result =
                             , Button.attrs [ Html.Attributes.tabindex -1 ]
                             ]
                             [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
+                        , InputGroup.dropdown
+                            dropdownState
+                            { options = []
+                            , toggleMsg = RangeDropDownMsg position
+                            , toggleButton =
+                                Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Ranges" ]
+                            , items =
+                                ranges
+                                    |> List.map
+                                        (\( label, range ) ->
+                                            Dropdown.buttonItem [ Html.Events.onClick (SelectPresetRange position range) ] [ Html.text label ]
+                                        )
+                            }
                         ]
                     |> InputGroup.view
                  ]
@@ -1328,9 +1385,15 @@ cellView cs size hand =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ Keyboard.downs KeyDown
         , Browser.Events.onMouseDown (Decode.succeed MouseDown)
         , Browser.Events.onMouseUp (Decode.succeed MouseUp)
+        , Dropdown.subscriptions model.rangeDropdownStateUtg (RangeDropDownMsg UTG)
+        , Dropdown.subscriptions model.rangeDropdownStateMp (RangeDropDownMsg MP)
+        , Dropdown.subscriptions model.rangeDropdownStateCo (RangeDropDownMsg CO)
+        , Dropdown.subscriptions model.rangeDropdownStateBu (RangeDropDownMsg BU)
+        , Dropdown.subscriptions model.rangeDropdownStateSb (RangeDropDownMsg SB)
+        , Dropdown.subscriptions model.rangeDropdownStateBb (RangeDropDownMsg BB)
         ]
