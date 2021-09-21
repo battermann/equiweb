@@ -1108,7 +1108,14 @@ cellView cs size hand =
                     ( "white", "#9b5378", "1" )
 
                 NotSelected ->
-                    ( "#aaaaaa", "#eeeeee", "1" )
+                    if hand |> Hand.isOffsuit then
+                        ( "#aaaaaa", "#eeeeee", "1" )
+
+                    else if hand |> Hand.isSuited then
+                        ( "#aaaaaa", "#dddddd", "1" )
+
+                    else
+                        ( "#aaaaaa", "#cccccc", "1" )
 
                 MouseOver ->
                     ( "white", "#9b5378", "0.5" )
