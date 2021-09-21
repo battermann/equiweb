@@ -825,7 +825,7 @@ rangeInputView position field result =
 numberOfCombosView : List HandRange -> List (Html Msg)
 numberOfCombosView ranges =
     if ranges |> List.isEmpty |> not then
-        [ Form.help [] [ Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "%  " ++ (Range.numberOfCombos ranges |> String.fromInt) ++ " / " ++ (Combo.total |> String.fromInt)) ] ]
+        [ Form.help [] [ Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "% (" ++ (Range.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")") ] ]
 
     else
         []
