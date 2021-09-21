@@ -1,6 +1,7 @@
-module Poker.Hand exposing (Hand, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, order, pair, parser, suited, toHandRanges, toString)
+module Poker.Hand exposing (Hand, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toHandRanges, toString)
 
 import List
+import List.Extra
 import Maybe.Extra
 import Parser exposing ((|.), (|=), Parser)
 import Poker.Card exposing (Card)
@@ -475,3 +476,34 @@ magic hand ranges =
 
         ( Offsuit _ _, _ ) ->
             [ toHandRanges hand, ranges ]
+
+
+pairs : List Hand
+pairs =
+    Rank.all |> List.map Pair
+
+
+suitedAces : List Hand
+suitedAces =
+    Rank.all |> List.filter ((/=) Rank.Ace) |> List.map (Suited Rank.Ace)
+
+
+offsuitAces : List Hand
+offsuitAces =
+    Rank.all |> List.filter ((/=) Rank.Ace) |> List.map (Offsuit Rank.Ace)
+
+
+suitedBroadways : List Hand
+suitedBroadways =
+    [ Rank.Ace, Rank.King, Rank.Queen, Rank.Jack, Rank.Ten ]
+        |> List.Extra.uniquePairs
+        |> List.map (\( r1, r2 ) -> suited r1 r2)
+        |> Maybe.Extra.values
+
+
+offsuitBroadways : List Hand
+offsuitBroadways =
+    [ Rank.Ace, Rank.King, Rank.Queen, Rank.Jack, Rank.Ten ]
+        |> List.Extra.uniquePairs
+        |> List.map (\( r1, r2 ) -> offsuit r1 r2)
+        |> Maybe.Extra.values

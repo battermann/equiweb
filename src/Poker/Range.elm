@@ -1,4 +1,4 @@
-module Poker.Range exposing (HandRange, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, parseAndNormalize, percentage, rangesToNormalizedString, toString)
+module Poker.Range exposing (HandRange, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, rangesToNormalizedString, suitedAces, suitedBroadways, toString)
 
 import List.Extra
 import Maybe.Extra
@@ -181,3 +181,28 @@ numberOfCombos =
 percentage : List HandRange -> Float
 percentage handRanges =
     (numberOfCombos handRanges |> toFloat) / toFloat Combo.total
+
+
+pairs : List HandRange
+pairs =
+    Hand.pairs |> List.map Hand
+
+
+suitedAces : List HandRange
+suitedAces =
+    Hand.suitedAces |> List.map Hand
+
+
+offsuitAces : List HandRange
+offsuitAces =
+    Hand.offsuitAces |> List.map Hand
+
+
+suitedBroadways : List HandRange
+suitedBroadways =
+    Hand.suitedBroadways |> List.map Hand
+
+
+offsuitBroadways : List HandRange
+offsuitBroadways =
+    Hand.offsuitBroadways |> List.map Hand

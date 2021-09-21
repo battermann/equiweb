@@ -28,6 +28,7 @@ import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline as P
 import Keyboard exposing (RawKey)
+import List.Extra
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
@@ -202,7 +203,6 @@ type Msg
     | CloseRangeSelectionModal
     | ToggleBoardSelection Card
     | ConfirmBoardSelection
-    | Reset
     | KeyDown RawKey
     | CardHover (Maybe Card)
     | ClearBoard
@@ -213,6 +213,11 @@ type Msg
     | HandHover (Maybe Hand)
     | UrlChange Url
     | ClickedLink UrlRequest
+    | SelectPairs
+    | SelectSuitedAces
+    | SelectSuitedBroadways
+    | SelectOffsuitAces
+    | SelectOffsuitBroadways
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
@@ -348,7 +353,6 @@ update msg model =
                         , boardSelection = []
                         , rangeSelection = []
                         , rangeSelectionPosition = UTG
-                        , alert = Nothing
                         , cardUnderMouse = Nothing
                         , ignoreCardHoverState = False
                         , mouse = Released
@@ -394,27 +398,6 @@ update msg model =
 
         ConfirmBoardSelection ->
             confirmBoardSelection model
-
-        Reset ->
-            ( { model
-                | simulationRequestForm = initialForm
-                , currentApiResponse = RemoteData.NotAsked
-                , results = []
-                , boardSelectModalVisibility = Modal.hidden
-                , rangeSelectionModalVisibility = Modal.hidden
-                , boardSelection = []
-                , rangeSelection = []
-                , rangeSelectionPosition = UTG
-                , alert = Nothing
-                , cardUnderMouse = Nothing
-                , ignoreCardHoverState = False
-                , mouse = Released
-                , handUnderMouse = Nothing
-                , ignoreRangeHoverState = False
-                , navKey = model.navKey
-              }
-            , Cmd.none
-            )
 
         KeyDown rawKey ->
             case Keyboard.anyKeyUpper rawKey of
@@ -505,6 +488,21 @@ update msg model =
 
         HandHover Nothing ->
             ( { model | handUnderMouse = Nothing, ignoreRangeHoverState = False }, Cmd.none )
+
+        SelectPairs ->
+            ( { model | rangeSelection = model.rangeSelection ++ Range.pairs |> List.Extra.unique }, Cmd.none )
+
+        SelectSuitedAces ->
+            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedAces |> List.Extra.unique }, Cmd.none )
+
+        SelectSuitedBroadways ->
+            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedBroadways |> List.Extra.unique }, Cmd.none )
+
+        SelectOffsuitAces ->
+            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitAces |> List.Extra.unique }, Cmd.none )
+
+        SelectOffsuitBroadways ->
+            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitBroadways |> List.Extra.unique }, Cmd.none )
 
 
 toggleHandSelection : HandRange -> Model -> Model
@@ -838,7 +836,7 @@ cardView msg selectState cursor refWidth card =
     Html.div
         ([ Html.Attributes.style "width" refWidth
          , Html.Attributes.style "min-height" "40px"
-         , Html.Attributes.style "min-width" "18px"
+         , Html.Attributes.style "min-width" "35px"
          , Html.Attributes.style "max-height" "80px"
          , Html.Attributes.style "max-width" "57px"
          , Html.Attributes.style "cursor" cursor
@@ -918,10 +916,9 @@ inputFormView model =
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
                 [ Html.div [ Flex.block, Flex.row ]
-                    [ Button.button
+                    [ Button.linkButton
                         [ Button.light
-                        , Button.attrs [ Size.w100, Html.Attributes.style "margin-right" "2px" ]
-                        , Button.onClick Reset
+                        , Button.attrs [ Size.w100, Html.Attributes.style "margin-right" "2px", Html.Attributes.href (Url.Builder.absolute [] []) ]
                         ]
                         [ Html.text "CLEAR ALL" ]
                     , Button.button
@@ -1046,32 +1043,25 @@ boardSelectionModalView model =
         |> Modal.large
         |> Modal.attrs [ Html.Attributes.class "modal-fullscreen-lg-down" ]
         |> Modal.body []
-            (Suit.all
-                |> List.map
-                    (\suit ->
-                        Html.div
-                            [ Flex.block
-                            , Flex.row
-                            , Flex.justifyCenter
-                            , Flex.alignItemsCenter
-                            ]
-                            (Rank.all
-                                |> List.reverse
-                                |> List.map
-                                    (\rank ->
-                                        Html.div
-                                            [ Flex.block
-                                            , Flex.col
-                                            , Flex.justifyAround
-                                            , Flex.alignItemsCenter
-                                            , Html.Attributes.style "user-select" "none"
-                                            , Html.Attributes.style "margin" "1px"
-                                            ]
-                                            [ Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardSelectState card model) "pointer" "6vw" card) ]
-                                    )
-                            )
-                    )
-            )
+            [ Html.div [ Flex.block, Flex.col, Flex.justifyCenter, Flex.alignItemsCenter ]
+                (Suit.all
+                    |> List.map
+                        (\suit ->
+                            Html.div
+                                [ Flex.block
+                                , Flex.row
+                                , Flex.wrap
+                                ]
+                                (Rank.all
+                                    |> List.reverse
+                                    |> List.map
+                                        (\rank ->
+                                            Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardSelectState card model) "pointer" "6vw" card)
+                                        )
+                                )
+                        )
+                )
+            ]
         |> Modal.footer []
             [ Button.button
                 [ Button.light
@@ -1116,9 +1106,9 @@ resultView : SimulationResult -> Card.Config Msg
 resultView result =
     Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
         |> Card.headerH4 []
-            [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
+            [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.alignItemsCenter ]
                 [ if result.board |> List.isEmpty |> not then
-                    Html.div [ Size.h100 ]
+                    Html.div []
                         [ Html.text "Board: "
                         , Html.text (result.board |> List.map Card.toString |> String.concat)
                         ]
@@ -1198,7 +1188,14 @@ rangeSelectionModalView model =
         |> Modal.large
         |> Modal.attrs [ Html.Attributes.class "modal-fullscreen-lg-down" ]
         |> Modal.body []
-            [ Html.div [ Flex.row, Flex.block, Flex.justifyAround ]
+            [ Html.div [ Flex.block, Flex.row, Spacing.mb3, Flex.wrap, Flex.justifyAround, Html.Attributes.style "gap" "8px" ]
+                [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "Pocket Pairs" ]
+                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "Suited Aces" ]
+                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "Suited Broadways" ]
+                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "Offsuit Aces" ]
+                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "Offsuit Broadways" ]
+                ]
+            , Html.div [ Flex.row, Flex.block, Flex.justifyAround ]
                 [ Html.div []
                     (Hand.grid
                         |> List.map
