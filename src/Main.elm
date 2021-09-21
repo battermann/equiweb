@@ -11,6 +11,7 @@ import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Modal as Modal
+import Bootstrap.Progress as Progress
 import Bootstrap.Spinner as Spinner
 import Bootstrap.Table as Table
 import Bootstrap.Utilities.Flex as Flex
@@ -825,7 +826,17 @@ rangeInputView position field result =
 numberOfCombosView : List HandRange -> List (Html Msg)
 numberOfCombosView ranges =
     if ranges |> List.isEmpty |> not then
-        [ Form.help [] [ Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "% (" ++ (Range.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")") ] ]
+        [ Form.help []
+            [ Html.div [ Spacing.mt1 ]
+                [ Progress.progress
+                    [ Progress.value (Range.percentage ranges * 100)
+                    , Progress.info
+                    , Progress.wrapperAttrs [ Html.Attributes.style "height" "6px" ]
+                    ]
+                , Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((Range.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
+                ]
+            ]
+        ]
 
     else
         []

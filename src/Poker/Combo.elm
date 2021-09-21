@@ -80,4 +80,4 @@ order (Combo h1 l1) (Combo h2 l2) =
 
 total : Int
 total =
-    1325
+    1326
