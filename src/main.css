@@ -9,3 +9,13 @@ td {
   table {
     table-layout: fixed;
   }
+
+h2 a {
+  color: inherit; 
+  text-decoration: inherit; 
+}
+
+h2 a:hover {
+  color: inherit; 
+  text-decoration: inherit; 
+}

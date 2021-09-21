@@ -17,8 +17,9 @@ import Bootstrap.Table as Table
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
-import Browser
+import Browser exposing (UrlRequest)
 import Browser.Events
+import Browser.Navigation as Navigation
 import Form
 import Html exposing (Html)
 import Html.Attributes
@@ -41,7 +42,10 @@ import Result.Extra
 import Round
 import Svg
 import Svg.Attributes
+import Url exposing (Url)
 import Url.Builder
+import Url.Parser as UrlParser exposing ((<?>), Parser)
+import Url.Parser.Query as Query
 
 
 type alias SimulationRequestForm =
@@ -130,7 +134,8 @@ type Mouse
 
 
 type alias Model =
-    { simulationRequestForm : SimulationRequestForm
+    { navKey : Navigation.Key
+    , simulationRequestForm : SimulationRequestForm
     , currentApiResponse : WebData SimulationResult
     , results : List SimulationResult
     , boardSelectModalVisibility : Modal.Visibility
@@ -149,31 +154,40 @@ type alias Model =
 
 main : Program () Model Msg
 main =
-    Browser.document
-        { init = \_ -> ( init, Cmd.none )
+    Browser.application
+        { init = \_ -> init
         , view = view
         , update = update
         , subscriptions = subscriptions
+        , onUrlRequest = ClickedLink
+        , onUrlChange = UrlChange
         }
 
 
-init : Model
-init =
-    { simulationRequestForm = initialForm
-    , currentApiResponse = RemoteData.NotAsked
-    , results = []
-    , boardSelectModalVisibility = Modal.hidden
-    , rangeSelectionModalVisibility = Modal.hidden
-    , boardSelection = []
-    , rangeSelection = []
-    , rangeSelectionPosition = UTG
-    , alert = Nothing
-    , cardUnderMouse = Nothing
-    , ignoreCardHoverState = False
-    , mouse = Released
-    , handUnderMouse = Nothing
-    , ignoreRangeHoverState = False
-    }
+init : Url -> Navigation.Key -> ( Model, Cmd Msg )
+init url key =
+    let
+        maybeForm =
+            UrlParser.parse urlParser url
+    in
+    Cmd.none
+        |> Tuple.pair
+            { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
+            , currentApiResponse = RemoteData.NotAsked
+            , results = []
+            , boardSelectModalVisibility = Modal.hidden
+            , rangeSelectionModalVisibility = Modal.hidden
+            , boardSelection = []
+            , rangeSelection = []
+            , rangeSelectionPosition = UTG
+            , alert = Nothing
+            , cardUnderMouse = Nothing
+            , ignoreCardHoverState = False
+            , mouse = Released
+            , handUnderMouse = Nothing
+            , ignoreRangeHoverState = False
+            , navKey = key
+            }
 
 
 type Msg
@@ -197,6 +211,8 @@ type Msg
     | MouseUp
     | ClearRange
     | HandHover (Maybe Hand)
+    | UrlChange Url
+    | ClickedLink UrlRequest
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
@@ -274,20 +290,8 @@ sendSimulationRequest model =
                 |> List.map Result.toMaybe
                 |> Maybe.Extra.values
                 |> List.filter (not << List.isEmpty)
-
-        formValid =
-            (Ok (\_ _ _ _ _ _ _ -> True)
-                |> Form.apply model.simulationRequestForm.board.validated
-                |> Form.apply model.simulationRequestForm.utg.validated
-                |> Form.apply model.simulationRequestForm.mp.validated
-                |> Form.apply model.simulationRequestForm.co.validated
-                |> Form.apply model.simulationRequestForm.bu.validated
-                |> Form.apply model.simulationRequestForm.sb.validated
-                |> Form.apply model.simulationRequestForm.bb.validated
-            )
-                |> Result.Extra.isOk
     in
-    if not <| formValid then
+    if not <| isFormValid model.simulationRequestForm then
         ( { model
             | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
             , alert = Just "Cannot not understand some of the inputs. Please check and try to correct."
@@ -308,14 +312,56 @@ sendSimulationRequest model =
         )
 
 
+isFormValid : SimulationRequestForm -> Bool
+isFormValid form =
+    (Ok (\_ _ _ _ _ _ _ -> True)
+        |> Form.apply form.board.validated
+        |> Form.apply form.utg.validated
+        |> Form.apply form.mp.validated
+        |> Form.apply form.co.validated
+        |> Form.apply form.bu.validated
+        |> Form.apply form.sb.validated
+        |> Form.apply form.bb.validated
+    )
+        |> Result.Extra.isOk
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ClickedLink req ->
+            case req of
+                Browser.Internal url ->
+                    ( model, Navigation.pushUrl model.navKey <| Url.toString url )
+
+                Browser.External href ->
+                    ( model, Navigation.load href )
+
+        UrlChange url ->
+            Cmd.none
+                |> Tuple.pair
+                    { model
+                        | simulationRequestForm = UrlParser.parse urlParser url |> Maybe.withDefault initialForm
+                        , currentApiResponse = RemoteData.NotAsked
+                        , boardSelectModalVisibility = Modal.hidden
+                        , rangeSelectionModalVisibility = Modal.hidden
+                        , boardSelection = []
+                        , rangeSelection = []
+                        , rangeSelectionPosition = UTG
+                        , alert = Nothing
+                        , cardUnderMouse = Nothing
+                        , ignoreCardHoverState = False
+                        , mouse = Released
+                        , handUnderMouse = Nothing
+                        , ignoreRangeHoverState = False
+                    }
+
         ApiResponseReceived result ->
             handleApiResponse model result
 
         SendSimulationRequest ->
             sendSimulationRequest model
+                |> updateUrl
 
         RangeInput position str ->
             ( { model | simulationRequestForm = setRange position str model.simulationRequestForm, currentApiResponse = RemoteData.NotAsked }, Cmd.none )
@@ -350,7 +396,25 @@ update msg model =
             confirmBoardSelection model
 
         Reset ->
-            ( init |> (\m -> { m | results = model.results }), Cmd.none )
+            ( { model
+                | simulationRequestForm = initialForm
+                , currentApiResponse = RemoteData.NotAsked
+                , results = []
+                , boardSelectModalVisibility = Modal.hidden
+                , rangeSelectionModalVisibility = Modal.hidden
+                , boardSelection = []
+                , rangeSelection = []
+                , rangeSelectionPosition = UTG
+                , alert = Nothing
+                , cardUnderMouse = Nothing
+                , ignoreCardHoverState = False
+                , mouse = Released
+                , handUnderMouse = Nothing
+                , ignoreRangeHoverState = False
+                , navKey = model.navKey
+              }
+            , Cmd.none
+            )
 
         KeyDown rawKey ->
             case Keyboard.anyKeyUpper rawKey of
@@ -371,6 +435,7 @@ update msg model =
 
                     else
                         sendSimulationRequest model
+                            |> updateUrl
 
                 _ ->
                     ( model, Cmd.none )
@@ -451,6 +516,11 @@ toggleHandSelection handRange model =
         { model | rangeSelection = model.rangeSelection ++ [ handRange ], ignoreRangeHoverState = True }
 
 
+rewriteBoard : SimulationRequestForm -> SimulationRequestForm
+rewriteBoard form =
+    { form | board = Form.rewrite form.board (List.map Card.toString >> String.concat) }
+
+
 rewrite : Position -> SimulationRequestForm -> SimulationRequestForm
 rewrite position form =
     case position of
@@ -488,6 +558,96 @@ confirmRangeSelection position model =
       }
     , Cmd.none
     )
+
+
+toSimulationRequestForm :
+    Maybe String
+    -> Maybe String
+    -> Maybe String
+    -> Maybe String
+    -> Maybe String
+    -> Maybe String
+    -> Maybe String
+    -> SimulationRequestForm
+toSimulationRequestForm maybeUtg maybeMp maybeCo maybeBu maybeSb maybeBb maybeBaord =
+    initialForm
+        |> setRange UTG (maybeUtg |> Maybe.withDefault "")
+        |> rewrite UTG
+        |> setRange MP (maybeMp |> Maybe.withDefault "")
+        |> rewrite MP
+        |> setRange CO (maybeCo |> Maybe.withDefault "")
+        |> rewrite CO
+        |> setRange BU (maybeBu |> Maybe.withDefault "")
+        |> rewrite BU
+        |> setRange SB (maybeSb |> Maybe.withDefault "")
+        |> rewrite SB
+        |> setRange BB (maybeBb |> Maybe.withDefault "")
+        |> rewrite BB
+        |> setBoard (maybeBaord |> Maybe.withDefault "")
+        |> rewriteBoard
+
+
+urlParser : Parser (SimulationRequestForm -> a) a
+urlParser =
+    UrlParser.map toSimulationRequestForm
+        (UrlParser.top
+            <?> Query.string "utg"
+            <?> Query.string "mp"
+            <?> Query.string "co"
+            <?> Query.string "bu"
+            <?> Query.string "sb"
+            <?> Query.string "bb"
+            <?> Query.string "board"
+        )
+
+
+updateUrl : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updateUrl ( model, cmd ) =
+    if model.simulationRequestForm |> isFormValid then
+        Cmd.batch
+            [ cmd
+            , Navigation.pushUrl model.navKey
+                (Url.Builder.absolute []
+                    (rangeQueryParameter UTG model.simulationRequestForm.utg
+                        ++ rangeQueryParameter MP model.simulationRequestForm.mp
+                        ++ rangeQueryParameter CO model.simulationRequestForm.co
+                        ++ rangeQueryParameter BU model.simulationRequestForm.bu
+                        ++ rangeQueryParameter SB model.simulationRequestForm.sb
+                        ++ rangeQueryParameter BB model.simulationRequestForm.bb
+                        ++ boardQueryParameter model.simulationRequestForm.board
+                    )
+                )
+            ]
+            |> Tuple.pair model
+
+    else
+        ( model, cmd )
+
+
+boardQueryParameter : Form.Field (List Card) -> List Url.Builder.QueryParameter
+boardQueryParameter board =
+    case board.validated of
+        Err _ ->
+            []
+
+        Ok [] ->
+            []
+
+        Ok cards ->
+            [ Url.Builder.string "board" (cards |> List.map Card.toString |> String.concat |> String.toLower) ]
+
+
+rangeQueryParameter : Position -> Form.Field (List HandRange) -> List Url.Builder.QueryParameter
+rangeQueryParameter position field =
+    case field.validated of
+        Err _ ->
+            []
+
+        Ok [] ->
+            []
+
+        Ok range ->
+            [ Url.Builder.string (position |> Position.toString |> String.toLower) (range |> Range.rangesToNormalizedString |> String.toLower) ]
 
 
 confirmBoardSelection : Model -> ( Model, Cmd Msg )
@@ -580,9 +740,11 @@ calculatorView model =
             [ Card.deck
                 ((Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
                     |> Card.headerH2 []
-                        [ Html.div [ Flex.block, Flex.row, Flex.alignItemsStart ]
-                            [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
-                            , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
+                        [ Html.a [ Html.Attributes.href (Url.Builder.absolute [] []) ]
+                            [ Html.div [ Flex.block, Flex.row, Flex.alignItemsStart ]
+                                [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
+                                , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
+                                ]
                             ]
                         ]
                     |> Card.block []
