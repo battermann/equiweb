@@ -17,8 +17,9 @@ import Bootstrap.Table as Table
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
-import Browser
+import Browser exposing (UrlRequest)
 import Browser.Events
+import Browser.Navigation as Navigation
 import Form
 import Html exposing (Html)
 import Html.Attributes
@@ -41,7 +42,9 @@ import Result.Extra
 import Round
 import Svg
 import Svg.Attributes
+import Url exposing (Url)
 import Url.Builder
+import Url.Parser as UrlParser exposing ((</>), Parser, s, top)
 
 
 type alias SimulationRequestForm =
@@ -130,7 +133,8 @@ type Mouse
 
 
 type alias Model =
-    { simulationRequestForm : SimulationRequestForm
+    { navKey : Navigation.Key
+    , simulationRequestForm : SimulationRequestForm
     , currentApiResponse : WebData SimulationResult
     , results : List SimulationResult
     , boardSelectModalVisibility : Modal.Visibility
@@ -149,31 +153,36 @@ type alias Model =
 
 main : Program () Model Msg
 main =
-    Browser.document
-        { init = \_ -> ( init, Cmd.none )
+    Browser.application
+        { init = \_ -> init
         , view = view
         , update = update
         , subscriptions = subscriptions
+        , onUrlRequest = ClickedLink
+        , onUrlChange = UrlChange
         }
 
 
-init : Model
-init =
-    { simulationRequestForm = initialForm
-    , currentApiResponse = RemoteData.NotAsked
-    , results = []
-    , boardSelectModalVisibility = Modal.hidden
-    , rangeSelectionModalVisibility = Modal.hidden
-    , boardSelection = []
-    , rangeSelection = []
-    , rangeSelectionPosition = UTG
-    , alert = Nothing
-    , cardUnderMouse = Nothing
-    , ignoreCardHoverState = False
-    , mouse = Released
-    , handUnderMouse = Nothing
-    , ignoreRangeHoverState = False
-    }
+init : Url -> Navigation.Key -> ( Model, Cmd Msg )
+init url key =
+    Cmd.none
+        |> Tuple.pair
+            { simulationRequestForm = initialForm
+            , currentApiResponse = RemoteData.NotAsked
+            , results = []
+            , boardSelectModalVisibility = Modal.hidden
+            , rangeSelectionModalVisibility = Modal.hidden
+            , boardSelection = []
+            , rangeSelection = []
+            , rangeSelectionPosition = UTG
+            , alert = Nothing
+            , cardUnderMouse = Nothing
+            , ignoreCardHoverState = False
+            , mouse = Released
+            , handUnderMouse = Nothing
+            , ignoreRangeHoverState = False
+            , navKey = key
+            }
 
 
 type Msg
@@ -197,6 +206,8 @@ type Msg
     | MouseUp
     | ClearRange
     | HandHover (Maybe Hand)
+    | UrlChange Url
+    | ClickedLink UrlRequest
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
@@ -311,6 +322,17 @@ sendSimulationRequest model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ClickedLink req ->
+            case req of
+                Browser.Internal url ->
+                    ( model, Navigation.pushUrl model.navKey <| Url.toString url )
+
+                Browser.External href ->
+                    ( model, Navigation.load href )
+
+        UrlChange url ->
+            Debug.todo ""
+
         ApiResponseReceived result ->
             handleApiResponse model result
 
@@ -350,7 +372,25 @@ update msg model =
             confirmBoardSelection model
 
         Reset ->
-            ( init |> (\m -> { m | results = model.results }), Cmd.none )
+            ( { model
+                | simulationRequestForm = initialForm
+                , currentApiResponse = RemoteData.NotAsked
+                , results = []
+                , boardSelectModalVisibility = Modal.hidden
+                , rangeSelectionModalVisibility = Modal.hidden
+                , boardSelection = []
+                , rangeSelection = []
+                , rangeSelectionPosition = UTG
+                , alert = Nothing
+                , cardUnderMouse = Nothing
+                , ignoreCardHoverState = False
+                , mouse = Released
+                , handUnderMouse = Nothing
+                , ignoreRangeHoverState = False
+                , navKey = model.navKey
+              }
+            , Cmd.none
+            )
 
         KeyDown rawKey ->
             case Keyboard.anyKeyUpper rawKey of
