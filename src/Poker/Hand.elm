@@ -407,17 +407,19 @@ toHandRanges hand =
         Pair belowAce ->
             PairRange belowAce belowAce
 
-        Suited Rank.Ace l ->
-            SuitedPlus Rank.Ace l
+        Suited h l ->
+            if Rank.isConnected h l then
+                SuitedPlus h l
 
-        Suited belowAce l ->
-            SuitedRange belowAce l l
+            else
+                SuitedRange h l l
 
-        Offsuit Rank.Ace l ->
-            OffsuitPlus Rank.Ace l
+        Offsuit h l ->
+            if Rank.isConnected h l then
+                OffsuitPlus h l
 
-        Offsuit belowAce l ->
-            OffsuitRange belowAce l l
+            else
+                OffsuitRange h l l
 
 
 magic : Hand -> Ranges -> List Ranges

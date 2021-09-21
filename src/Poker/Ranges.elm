@@ -27,6 +27,9 @@ toString ranges =
             if high == low then
                 Rank.toString high ++ Rank.toString high
 
+            else if Rank.isConnected high low then
+                Rank.toString high ++ Rank.toString high ++ "," ++ Rank.toString low ++ Rank.toString low
+
             else
                 Rank.toString high ++ Rank.toString high ++ "-" ++ Rank.toString low ++ Rank.toString low
 
@@ -41,6 +44,9 @@ toString ranges =
             if lowTo == lowFrom then
                 Rank.toString high ++ Rank.toString lowFrom ++ "s"
 
+            else if Rank.isConnected lowTo lowFrom then
+                Rank.toString high ++ Rank.toString lowTo ++ "s," ++ Rank.toString high ++ Rank.toString lowFrom ++ "s"
+
             else
                 Rank.toString high ++ Rank.toString lowTo ++ "s-" ++ Rank.toString high ++ Rank.toString lowFrom ++ "s"
 
@@ -54,6 +60,9 @@ toString ranges =
         OffsuitRange high lowTo lowFrom ->
             if lowTo == lowFrom then
                 Rank.toString high ++ Rank.toString lowFrom ++ "o"
+
+            else if Rank.isConnected lowTo lowFrom then
+                Rank.toString high ++ Rank.toString lowTo ++ "o," ++ Rank.toString high ++ Rank.toString lowFrom ++ "o"
 
             else
                 Rank.toString high ++ Rank.toString lowTo ++ "o-" ++ Rank.toString high ++ Rank.toString lowFrom ++ "o"
