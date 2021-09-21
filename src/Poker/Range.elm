@@ -1,4 +1,4 @@
-module Poker.Range exposing (HandRange, fromCombo, fromHand, isCombo, isHand, parseAndNormalize, rangesToNormalizedString, toString)
+module Poker.Range exposing (HandRange, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, parseAndNormalize, percentage, rangesToNormalizedString, toString)
 
 import List.Extra
 import Maybe.Extra
@@ -161,3 +161,23 @@ combine handRange ranges =
 rangesToNormalizedString : List HandRange -> String
 rangesToNormalizedString =
     removeRedundantCombos >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","
+
+
+combos : HandRange -> List Combo
+combos handRange =
+    case handRange of
+        Combo c ->
+            [ c ]
+
+        Hand h ->
+            Hand.combos h
+
+
+numberOfCombos : List HandRange -> Int
+numberOfCombos =
+    List.map (combos >> List.length) >> List.sum
+
+
+percentage : List HandRange -> Float
+percentage handRanges =
+    (numberOfCombos handRanges |> toFloat) / toFloat Combo.total

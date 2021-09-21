@@ -29,6 +29,7 @@ import Keyboard exposing (RawKey)
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
+import Poker.Combo as Combo
 import Poker.Hand as Hand exposing (Hand)
 import Poker.Position as Position exposing (Position(..))
 import Poker.Range as Range exposing (HandRange)
@@ -777,8 +778,8 @@ rangeInputView position field result =
     Form.row []
         [ Form.col []
             [ Form.group []
-                [ Form.label [] [ Html.text field.name ]
-                , InputGroup.config
+                ([ Form.label [] [ Html.text field.name ]
+                 , InputGroup.config
                     (InputGroup.text
                         ((if field.validated == Ok [] then
                             []
@@ -808,7 +809,9 @@ rangeInputView position field result =
                             [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
                         ]
                     |> InputGroup.view
-                ]
+                 ]
+                    ++ numberOfCombosView (field.validated |> Result.withDefault [])
+                )
             ]
         , Form.col [ Col.sm2 ]
             [ Form.group []
@@ -817,6 +820,15 @@ rangeInputView position field result =
                 ]
             ]
         ]
+
+
+numberOfCombosView : List HandRange -> List (Html Msg)
+numberOfCombosView ranges =
+    if ranges |> List.isEmpty |> not then
+        [ Form.help [] [ Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "%  " ++ (Range.numberOfCombos ranges |> String.fromInt) ++ " / " ++ (Combo.total |> String.fromInt)) ] ]
+
+    else
+        []
 
 
 rewritable : Form.Field (List HandRange) -> Bool

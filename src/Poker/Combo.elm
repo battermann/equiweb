@@ -1,4 +1,4 @@
-module Poker.Combo exposing (Combo, all, combo, order, parser, toString)
+module Poker.Combo exposing (Combo, all, combo, order, parser, toString, total)
 
 import List.Extra
 import Maybe.Extra
@@ -76,3 +76,8 @@ order (Combo h1 l1) (Combo h2 l2) =
 
         orElse ->
             orElse
+
+
+total : Int
+total =
+    1325
