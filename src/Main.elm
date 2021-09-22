@@ -141,7 +141,7 @@ type alias Model =
     { navKey : Navigation.Key
     , simulationRequestForm : SimulationRequestForm
     , currentApiResponse : WebData SimulationResult
-    , results : List SimulationResult
+    , results : List ( Url, SimulationResult )
     , boardSelectModalVisibility : Modal.Visibility
     , rangeSelectionModalVisibility : Modal.Visibility
     , boardSelection : List Card
@@ -221,7 +221,7 @@ type Msg
     | CloseRangeSelectionModal
     | ConfirmBoardSelection
     | ConfirmRangeSelection
-    | CopyUrlToClipboard
+    | CopyToClipboard String
     | HandHover (Maybe Hand)
     | KeyDown RawKey
     | MouseDown
@@ -301,7 +301,7 @@ handleApiResponse model result =
                                 )
                     )
     in
-    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault []) ++ model.results }, Cmd.none )
+    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (Tuple.pair model.location)) ++ model.results }, Cmd.none )
 
 
 sendSimulationRequest : Model -> ( Model, Cmd Msg )
@@ -557,8 +557,8 @@ update msg model =
             , Cmd.none
             )
 
-        CopyUrlToClipboard ->
-            ( model, Ports.copyToClipboard (model.location |> Url.toString) )
+        CopyToClipboard text ->
+            ( model, Ports.copyToClipboard text )
 
         RangeSlider value ->
             ( { model
@@ -811,21 +811,11 @@ calculatorView model =
                 ((Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
                     |> Card.headerH2 []
                         [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
-                            (Html.a [ Html.Attributes.href (Url.Builder.absolute [] []), Flex.block, Flex.row, Flex.alignItemsStart ]
+                            [ Html.a [ Html.Attributes.href (Url.Builder.absolute [] []), Flex.block, Flex.row, Flex.alignItemsStart ]
                                 [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
                                 , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
                                 ]
-                                :: (if model.currentApiResponse |> RemoteData.isSuccess then
-                                        [ Button.button [ Button.outlineSecondary, Button.onClick CopyUrlToClipboard ]
-                                            [ Html.img [ Html.Attributes.src "images/share_black_24dp.svg", Html.Attributes.style "margin-right" "2px" ] []
-                                            , Html.text "SHARE SCENARIO"
-                                            ]
-                                        ]
-
-                                    else
-                                        []
-                                   )
-                            )
+                            ]
                         ]
                     |> Card.block []
                         [ Block.custom <|
@@ -847,7 +837,7 @@ calculatorView model =
                                         )
                         ]
                  )
-                    :: (model.results |> List.map resultView)
+                    :: (model.results |> List.map (\( url, res ) -> resultView url res))
                 )
             ]
         ]
@@ -1202,20 +1192,19 @@ isBoardSelectionValid model =
             False
 
 
-resultView : SimulationResult -> Card.Config Msg
-resultView result =
+resultView : Url -> SimulationResult -> Card.Config Msg
+resultView url result =
     Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
         |> Card.headerH4 []
             [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.alignItemsCenter ]
                 [ if result.board |> List.isEmpty |> not then
-                    Html.div []
-                        [ Html.text "Board: "
-                        , Html.text (result.board |> List.map Card.toString |> String.concat)
-                        ]
+                    boardView "30px" result.board
 
                   else
                     Html.text "Preflop"
-                , boardView "30px" result.board
+                , Button.button [ Button.outlineSecondary, Button.onClick (CopyToClipboard (url |> Url.toString)) ]
+                    [ Html.i [ Html.Attributes.class "fas fa-share-alt" ] []
+                    ]
                 ]
             ]
         |> Card.block []
@@ -1285,8 +1274,7 @@ cardSelectState card model =
 rangeSelectionModalView : Model -> Html Msg
 rangeSelectionModalView model =
     Modal.config CloseRangeSelectionModal
-        |> Modal.large
-        |> Modal.attrs [ Html.Attributes.class "modal-fullscreen" ]
+        |> Modal.attrs [ Html.Attributes.class "modal-xl modal-fullscreen-xxl-down" ]
         |> Modal.body []
             [ Grid.row []
                 [ Grid.col []
@@ -1404,8 +1392,8 @@ cellView cs size hand =
         , Html.Attributes.style "height" size
         , Html.Attributes.style "min-height" "20px"
         , Html.Attributes.style "min-width" "18px"
-        , Html.Attributes.style "max-height" "50px"
-        , Html.Attributes.style "max-width" "50px"
+        , Html.Attributes.style "max-height" "38px"
+        , Html.Attributes.style "max-width" "38px"
         , Html.Attributes.style "cursor" "pointer"
         , Html.Attributes.style "margin" "1px"
         , Html.Attributes.style "user-select" "none"
