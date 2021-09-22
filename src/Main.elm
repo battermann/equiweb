@@ -479,6 +479,7 @@ update msg model =
                 | rangeSelectionModalVisibility = Modal.shown
                 , rangeSelection = range
                 , rangeSelectionPosition = position
+                , rangeSlider = Nothing
               }
             , Cmd.none
             )
