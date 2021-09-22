@@ -1045,7 +1045,7 @@ rangeInputView position field result dropdownState ranges =
                         ]
                     |> InputGroup.view
                  ]
-                    ++ numberOfCombosView (field.validated |> Result.withDefault [])
+                    ++ numberOfCombosIfNotEmptyView (field.validated |> Result.withDefault [])
                 )
             ]
         , Form.col [ Col.sm2 ]
@@ -1057,23 +1057,27 @@ rangeInputView position field result dropdownState ranges =
         ]
 
 
-numberOfCombosView : List HandRange -> List (Html Msg)
-numberOfCombosView ranges =
+numberOfCombosIfNotEmptyView : List HandRange -> List (Html Msg)
+numberOfCombosIfNotEmptyView ranges =
     if ranges |> List.isEmpty |> not then
-        [ Form.help []
-            [ Html.div [ Spacing.mt1 ]
-                [ Progress.progress
-                    [ Progress.value (Range.percentage ranges * 100)
-                    , Progress.info
-                    , Progress.wrapperAttrs [ Html.Attributes.style "height" "6px" ]
-                    ]
-                , Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((Range.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
-                ]
-            ]
-        ]
+        [ numberOfCombosView ranges ]
 
     else
         []
+
+
+numberOfCombosView : List HandRange -> Html Msg
+numberOfCombosView ranges =
+    Form.help []
+        [ Html.div [ Spacing.mt1 ]
+            [ Progress.progress
+                [ Progress.value (Range.percentage ranges * 100)
+                , Progress.info
+                , Progress.wrapperAttrs [ Html.Attributes.style "height" "6px" ]
+                ]
+            , Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((Range.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
+            ]
+        ]
 
 
 rewritable : Form.Field (List HandRange) -> Bool
@@ -1261,33 +1265,41 @@ rangeSelectionModalView : Model -> Html Msg
 rangeSelectionModalView model =
     Modal.config CloseRangeSelectionModal
         |> Modal.large
-        |> Modal.attrs [ Html.Attributes.class "modal-fullscreen-lg-down" ]
+        |> Modal.attrs [ Html.Attributes.class "modal-fullscreen" ]
         |> Modal.body []
-            [ Html.div [ Flex.block, Flex.row, Spacing.mb3, Flex.wrap, Flex.justifyAround, Html.Attributes.style "gap" "8px" ]
-                [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "Pocket Pairs" ]
-                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "Suited Aces" ]
-                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "Suited Broadways" ]
-                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "Offsuit Aces" ]
-                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "Offsuit Broadways" ]
-                ]
-            , Html.div [ Flex.row, Flex.block, Flex.justifyAround ]
-                [ Html.div []
-                    (Hand.grid
-                        |> List.map
-                            (\row ->
-                                Html.div
-                                    [ Flex.block, Flex.row ]
-                                    (row
-                                        |> List.map
-                                            (\hand ->
-                                                cellView
-                                                    (rangeSelectState hand model)
-                                                    "5vm"
-                                                    hand
+            [ Grid.row []
+                [ Grid.col []
+                    [ Html.div [ Flex.row, Flex.block, Flex.justifyAround, Spacing.mb2 ]
+                        [ Html.div [ Flex.block, Flex.col ]
+                            ((Hand.grid
+                                |> List.map
+                                    (\row ->
+                                        Html.div
+                                            [ Flex.block, Flex.row ]
+                                            (row
+                                                |> List.map
+                                                    (\hand ->
+                                                        cellView
+                                                            (rangeSelectState hand model)
+                                                            "5vm"
+                                                            hand
+                                                    )
                                             )
                                     )
+                             )
+                                ++ [ numberOfCombosView model.rangeSelection ]
                             )
-                    )
+                        ]
+                    ]
+                , Grid.col []
+                    [ Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
+                        [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "Pocket Pairs" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "Suited Aces" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "Suited Broadways" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "Offsuit Aces" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "Offsuit Broadways" ]
+                        ]
+                    ]
                 ]
             ]
         |> Modal.footer []
