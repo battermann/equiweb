@@ -160,6 +160,7 @@ type alias Model =
     , rangeDropdownStateSb : Dropdown.State
     , rangeDropdownStateBb : Dropdown.State
     , location : Url
+    , rangeSlider : Maybe Int
     }
 
 
@@ -205,6 +206,7 @@ init url key =
             , rangeDropdownStateSb = Dropdown.initialState
             , rangeDropdownStateBb = Dropdown.initialState
             , location = url
+            , rangeSlider = Nothing
             }
 
 
@@ -226,6 +228,7 @@ type Msg
     | MouseUp
     | RangeDropDownMsg Position Dropdown.State
     | RangeInput Position String
+    | RangeSlider String
     | RewriteRange Position
     | SelectOffsuitAces
     | SelectOffsuitBroadways
@@ -498,7 +501,7 @@ update msg model =
             ( { model | mouse = Released }, Cmd.none )
 
         ClearRange ->
-            ( { model | rangeSelection = [] }, Cmd.none )
+            ( { model | rangeSelection = [], rangeSlider = Nothing }, Cmd.none )
 
         HandHover (Just hand) ->
             if model.mouse == Pressed then
@@ -511,19 +514,19 @@ update msg model =
             ( { model | handUnderMouse = Nothing, ignoreRangeHoverState = False }, Cmd.none )
 
         SelectPairs ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.pairs |> List.Extra.unique }, Cmd.none )
+            ( { model | rangeSelection = model.rangeSelection ++ Range.pairs |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
 
         SelectSuitedAces ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedAces |> List.Extra.unique }, Cmd.none )
+            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedAces |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
 
         SelectSuitedBroadways ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedBroadways |> List.Extra.unique }, Cmd.none )
+            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedBroadways |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
 
         SelectOffsuitAces ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitAces |> List.Extra.unique }, Cmd.none )
+            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitAces |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
 
         SelectOffsuitBroadways ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitBroadways |> List.Extra.unique }, Cmd.none )
+            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitBroadways |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
 
         RangeDropDownMsg position state ->
             case position of
@@ -556,14 +559,30 @@ update msg model =
         CopyUrlToClipboard ->
             ( model, Ports.copyToClipboard (model.location |> Url.toString) )
 
+        RangeSlider value ->
+            ( { model
+                | rangeSlider = String.toInt value
+                , rangeSelection = String.toFloat value |> Maybe.map (\f -> Range.best (f / 100)) |> Maybe.withDefault model.rangeSelection
+              }
+            , Cmd.none
+            )
+
 
 toggleHandSelection : HandRange -> Model -> Model
 toggleHandSelection handRange model =
     if model.rangeSelection |> List.member handRange then
-        { model | rangeSelection = model.rangeSelection |> List.filter ((/=) handRange), ignoreRangeHoverState = True }
+        { model
+            | rangeSelection = model.rangeSelection |> List.filter ((/=) handRange)
+            , ignoreRangeHoverState = True
+            , rangeSlider = Nothing
+        }
 
     else
-        { model | rangeSelection = model.rangeSelection ++ [ handRange ], ignoreRangeHoverState = True }
+        { model
+            | rangeSelection = model.rangeSelection ++ [ handRange ]
+            , ignoreRangeHoverState = True
+            , rangeSlider = Nothing
+        }
 
 
 rewriteBoard : SimulationRequestForm -> SimulationRequestForm
@@ -1293,11 +1312,23 @@ rangeSelectionModalView model =
                     ]
                 , Grid.col []
                     [ Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
-                        [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "Pocket Pairs" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "Suited Aces" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "Suited Broadways" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "Offsuit Aces" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "Offsuit Broadways" ]
+                        [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "POCKET PAIRS" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "SUITED ACES" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "SUITED BROADWAYS" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "OFFSUIT ACES" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
+                        ]
+                    , Html.div [ Size.w100 ]
+                        [ Html.text "% Range"
+                        , Html.input
+                            [ Html.Attributes.type_ "range"
+                            , Html.Attributes.min "0"
+                            , Html.Attributes.max "100"
+                            , Html.Attributes.value (model.rangeSlider |> Maybe.map String.fromInt |> Maybe.withDefault "0")
+                            , Size.w100
+                            , Html.Events.onInput RangeSlider
+                            ]
+                            []
                         ]
                     ]
                 ]

@@ -1,4 +1,4 @@
-module Poker.Range exposing (HandRange, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, rangesToNormalizedString, suitedAces, suitedBroadways, toString)
+module Poker.Range exposing (HandRange, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, rangesToNormalizedString, suitedAces, suitedBroadways, toString)
 
 import List.Extra
 import Maybe.Extra
