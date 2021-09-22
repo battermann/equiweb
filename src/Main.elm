@@ -1016,7 +1016,7 @@ rangeInputView position field result dropdownState ranges =
                             { options = []
                             , toggleMsg = RangeDropDownMsg position
                             , toggleButton =
-                                Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Ranges" ]
+                                Dropdown.toggle [ Button.outlineSecondary, Button.attrs [ Html.Attributes.tabindex -1 ] ] [ Html.text "Ranges" ]
                             , items =
                                 ranges
                                     |> List.map
