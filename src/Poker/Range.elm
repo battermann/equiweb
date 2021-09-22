@@ -2,7 +2,7 @@ module Poker.Range exposing (HandRange, combos, fromCombo, fromHand, isCombo, is
 
 import List.Extra
 import Maybe.Extra
-import Parser exposing (Parser)
+import Parser exposing ((|.), Parser)
 import Poker.Combo as Combo exposing (Combo)
 import Poker.Hand as Hand exposing (Hand)
 import Poker.Ranges as Ranges exposing (Ranges(..))
@@ -83,6 +83,20 @@ parser =
         ]
 
 
+percentageParser : Parser (List HandRange)
+percentageParser =
+    Parser.oneOf
+        [ Parser.int
+            |. Parser.symbol "%"
+            |. Parser.end
+        , Parser.succeed 100
+            |. Parser.symbol "random"
+            |. Parser.end
+        ]
+        |> Parser.map (\p -> (p |> toFloat) / 100.0)
+        |> Parser.map best
+
+
 removeRedundantCombos : List HandRange -> List HandRange
 removeRedundantCombos range =
     let
@@ -98,12 +112,16 @@ removeRedundantCombos range =
 parseAndNormalize : String -> Result (List String) (List HandRange)
 parseAndNormalize rangeString =
     rangeString
-        |> String.split ","
-        |> List.map (String.replace " " "")
-        |> List.map (Parser.run parser)
-        |> Result.Extra.combine
-        |> Result.map (List.concat >> removeRedundantCombos)
-        |> Result.map (List.sortWith order >> List.reverse)
+        |> Parser.run percentageParser
+        |> Result.Extra.orElse
+            (rangeString
+                |> String.split ","
+                |> List.map (String.replace " " "")
+                |> List.map (Parser.run parser)
+                |> Result.Extra.combine
+                |> Result.map (List.concat >> removeRedundantCombos)
+                |> Result.map (List.sortWith order >> List.reverse)
+            )
         |> Result.Extra.mapBoth (always [ "Range is not valid" ]) identity
 
 
@@ -181,6 +199,20 @@ numberOfCombos =
 percentage : List HandRange -> Float
 percentage handRanges =
     (numberOfCombos handRanges |> toFloat) / toFloat Combo.total
+
+
+best : Float -> List HandRange
+best p =
+    Hand.allRanked
+        |> List.foldl
+            (\h hr ->
+                if (numberOfCombos hr |> toFloat) / toFloat Combo.total < p then
+                    Hand h :: hr
+
+                else
+                    hr
+            )
+            []
 
 
 pairs : List HandRange

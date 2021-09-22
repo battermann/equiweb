@@ -34,7 +34,7 @@ import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.Combo as Combo
-import Poker.Data as PositionRanges
+import Poker.Data as Data
 import Poker.Hand as Hand exposing (Hand)
 import Poker.Position as Position exposing (Position(..))
 import Poker.Range as Range exposing (HandRange)
@@ -922,12 +922,12 @@ cardView msg selectState cursor refWidth card =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ rangeInputView UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map (\r -> r.utg) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (PositionRanges.all |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map (\r -> r.mp) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (PositionRanges.all |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map (\r -> r.co) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (PositionRanges.all |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map (\r -> r.bu) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (PositionRanges.all |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map (\r -> r.sb) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (PositionRanges.all |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map (\r -> r.bb) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (PositionRanges.all |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
+        [ rangeInputView UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map (\r -> r.utg) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Data.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map (\r -> r.mp) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Data.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map (\r -> r.co) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Data.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map (\r -> r.bu) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Data.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map (\r -> r.sb) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Data.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map (\r -> r.bb) |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Data.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
         , Form.row
             []
             [ Form.col [ Col.sm10 ]

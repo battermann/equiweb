@@ -1,4 +1,4 @@
-module Poker.Data exposing (all)
+module Poker.Data exposing (positionalRanges)
 
 import Poker.Position exposing (Position(..))
 
@@ -10,8 +10,8 @@ type alias PositionalRange =
     }
 
 
-all : List PositionalRange
-all =
+positionalRanges : List PositionalRange
+positionalRanges =
     [ PositionalRange UTG "UTG RFI" utgRfi
     , PositionalRange MP "MP RFI" mpRfi
     , PositionalRange CO "CO RFI" coRfi
