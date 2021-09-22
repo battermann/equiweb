@@ -4,7 +4,7 @@ import './main.css'
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
 
-Elm.Main.init({
+var app = Elm.Main.init({
   node: document.getElementById('root')
 });
 
@@ -12,3 +12,13 @@ Elm.Main.init({
 // unregister() to register() below. Note this comes with some pitfalls.
 // Learn more about service workers: https://bit.ly/CRA-PWA
 serviceWorker.unregister();
+
+app.ports.copyToClipboard.subscribe(function (text) {
+  var inputc = document.body.appendChild(document.createElement("input"));
+  inputc.value = text;
+  inputc.focus();
+  inputc.select();
+  document.execCommand('copy');
+  inputc.parentNode.removeChild(inputc);
+  alert("URL Copied");
+});

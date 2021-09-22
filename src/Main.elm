@@ -40,6 +40,7 @@ import Poker.Position as Position exposing (Position(..))
 import Poker.Range as Range exposing (HandRange)
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
+import Ports
 import RemoteData exposing (WebData)
 import Result.Extra
 import Round
@@ -158,6 +159,7 @@ type alias Model =
     , rangeDropdownStateBu : Dropdown.State
     , rangeDropdownStateSb : Dropdown.State
     , rangeDropdownStateBb : Dropdown.State
+    , location : Url
     }
 
 
@@ -202,6 +204,7 @@ init url key =
             , rangeDropdownStateBu = Dropdown.initialState
             , rangeDropdownStateSb = Dropdown.initialState
             , rangeDropdownStateBb = Dropdown.initialState
+            , location = url
             }
 
 
@@ -216,6 +219,7 @@ type Msg
     | CloseRangeSelectionModal
     | ConfirmBoardSelection
     | ConfirmRangeSelection
+    | CopyUrlToClipboard
     | HandHover (Maybe Hand)
     | KeyDown RawKey
     | MouseDown
@@ -374,6 +378,7 @@ update msg model =
                         , mouse = Released
                         , handUnderMouse = Nothing
                         , ignoreRangeHoverState = False
+                        , location = url
                     }
 
         ApiResponseReceived result ->
@@ -547,6 +552,9 @@ update msg model =
               }
             , Cmd.none
             )
+
+        CopyUrlToClipboard ->
+            ( model, Ports.copyToClipboard (model.location |> Url.toString) )
 
 
 toggleHandSelection : HandRange -> Model -> Model
@@ -782,12 +790,22 @@ calculatorView model =
             [ Card.deck
                 ((Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
                     |> Card.headerH2 []
-                        [ Html.a [ Html.Attributes.href (Url.Builder.absolute [] []) ]
-                            [ Html.div [ Flex.block, Flex.row, Flex.alignItemsStart ]
+                        [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
+                            (Html.a [ Html.Attributes.href (Url.Builder.absolute [] []), Flex.block, Flex.row, Flex.alignItemsStart ]
                                 [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
                                 , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
                                 ]
-                            ]
+                                :: (if model.currentApiResponse |> RemoteData.isSuccess then
+                                        [ Button.button [ Button.outlineSecondary, Button.onClick CopyUrlToClipboard ]
+                                            [ Html.img [ Html.Attributes.src "images/share_black_24dp.svg", Html.Attributes.style "margin-right" "2px" ] []
+                                            , Html.text "SHARE SCENARIO"
+                                            ]
+                                        ]
+
+                                    else
+                                        []
+                                   )
+                            )
                         ]
                     |> Card.block []
                         [ Block.custom <|
