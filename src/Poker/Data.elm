@@ -1,6 +1,8 @@
-module Poker.Data exposing (positionalRanges)
+module Poker.Data exposing (positionalRanges, ranges)
 
+import Maybe.Extra
 import Poker.Position exposing (Position(..))
+import Poker.Range as Range exposing (HandRange)
 
 
 type alias PositionalRange =
@@ -14,17 +16,17 @@ positionalRanges : List PositionalRange
 positionalRanges =
     [ PositionalRange UTG "UTG RFI" utgRfi
     , PositionalRange MP "MP RFI" mpRfi
-    , PositionalRange CO "CO RFI" coRfi
-    , PositionalRange BU "BU RFI" buRfi
-    , PositionalRange SB "SB RFI" sbRfi
     , PositionalRange MP "MP 3bet vs UTG" mp3betVsUtg
+    , PositionalRange CO "CO RFI" coRfi
     , PositionalRange CO "CO 3bet vs UTG" co3betVsUtg
     , PositionalRange CO "CO 3bet vs MP" co3betVsMp
+    , PositionalRange BU "BU RFI" buRfi
     , PositionalRange BU "BU Call vs UTG" buCallVsUtg
     , PositionalRange BU "BU Call vs MP" buCallVsMp
     , PositionalRange BU "BU 3bet vs UTG" bu3betVsUtg
     , PositionalRange BU "BU 3bet vs MP" bu3betVsMp
     , PositionalRange BU "BU 3bet vs CO" bu3betvsCo
+    , PositionalRange SB "SB RFI" sbRfi
     , PositionalRange SB "SB 3bet vs UTG" sb3betVsUtg
     , PositionalRange SB "SB 3bet vs MP" sbt3betVsMp
     , PositionalRange SB "SB 3bet vs CO" sb3betVsCo
@@ -40,6 +42,11 @@ positionalRanges =
     , PositionalRange BB "BB 3bet vs BU" bb3betVsBu
     , PositionalRange BB "BB 3bet vs SB" bb3betVsSb
     ]
+
+
+ranges : List ( String, List HandRange )
+ranges =
+    positionalRanges |> List.map (\pr -> Range.parseAndNormalize pr.range |> Result.map (Tuple.pair pr.label) |> Result.toMaybe) |> Maybe.Extra.values
 
 
 utgRfi : String

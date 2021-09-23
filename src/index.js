@@ -13,12 +13,12 @@ var app = Elm.Main.init({
 // Learn more about service workers: https://bit.ly/CRA-PWA
 serviceWorker.unregister();
 
-app.ports.copyToClipboard.subscribe(function (text) {
+app.ports.copyToClipboard.subscribe(function (x) {
   var inputc = document.body.appendChild(document.createElement("input"));
-  inputc.value = text;
+  inputc.value = x[1];
   inputc.focus();
   inputc.select();
   document.execCommand('copy');
   inputc.parentNode.removeChild(inputc);
-  alert("URL Copied");
+  app.ports.notifyCopyToClipboard.send(x[0]);
 });
