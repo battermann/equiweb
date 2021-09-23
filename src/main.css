@@ -19,3 +19,7 @@ h2 a:hover {
   color: inherit; 
   text-decoration: inherit; 
 }
+
+i {
+  color : #555555;
+}

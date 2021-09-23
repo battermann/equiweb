@@ -229,6 +229,7 @@ type Msg
     | RangeDropDownMsg Position Dropdown.State
     | RangeInput Position String
     | RangeSlider String
+    | RemoveRange Position
     | RewriteRange Position
     | SelectOffsuitAces
     | SelectOffsuitBroadways
@@ -567,6 +568,9 @@ update msg model =
               }
             , Cmd.none
             )
+
+        RemoveRange position ->
+            ( { model | simulationRequestForm = setRange position "" model.simulationRequestForm }, Cmd.none )
 
 
 toggleHandSelection : HandRange -> Model -> Model
@@ -1011,7 +1015,8 @@ rangeInputView position field result dropdownState ranges =
     Form.row []
         [ Form.col []
             [ Form.group []
-                ([ Form.label [] [ Html.text field.name ]
+                ([ Form.label []
+                    [ Html.text field.name ]
                  , InputGroup.config
                     (InputGroup.text
                         ((if field.validated == Ok [] then
@@ -1026,8 +1031,27 @@ rangeInputView position field result dropdownState ranges =
                                ]
                         )
                     )
-                    |> InputGroup.successors
-                        [ InputGroup.button
+                    |> InputGroup.predecessors
+                        [ InputGroup.dropdown
+                            dropdownState
+                            { options = []
+                            , toggleMsg = RangeDropDownMsg position
+                            , toggleButton =
+                                Dropdown.toggle [ Button.outlineSecondary, Button.attrs [ Html.Attributes.tabindex -1 ] ] [ Html.i [ Html.Attributes.class "fas fa-bars" ] [] ]
+                            , items =
+                                ranges
+                                    |> List.map
+                                        (\( label, range ) ->
+                                            Dropdown.buttonItem [ Html.Events.onClick (SelectPresetRange position range) ] [ Html.text label ]
+                                        )
+                            }
+                        , InputGroup.button
+                            [ Button.outlineSecondary
+                            , Button.onClick (ShowRangeSelectionModal position)
+                            , Button.attrs [ Html.Attributes.tabindex -1 ]
+                            ]
+                            [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
+                        , InputGroup.button
                             [ Button.outlineSecondary
                             , Button.onClick (RewriteRange position)
                             , Button.disabled (rewritable field |> not)
@@ -1036,23 +1060,11 @@ rangeInputView position field result dropdownState ranges =
                             [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
                         , InputGroup.button
                             [ Button.outlineSecondary
-                            , Button.onClick (ShowRangeSelectionModal position)
                             , Button.attrs [ Html.Attributes.tabindex -1 ]
+                            , Button.onClick (RemoveRange position)
+                            , Button.disabled (field.validated |> Result.withDefault [] |> List.isEmpty)
                             ]
-                            [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
-                        , InputGroup.dropdown
-                            dropdownState
-                            { options = []
-                            , toggleMsg = RangeDropDownMsg position
-                            , toggleButton =
-                                Dropdown.toggle [ Button.outlineSecondary, Button.attrs [ Html.Attributes.tabindex -1 ] ] [ Html.text "Ranges" ]
-                            , items =
-                                ranges
-                                    |> List.map
-                                        (\( label, range ) ->
-                                            Dropdown.buttonItem [ Html.Events.onClick (SelectPresetRange position range) ] [ Html.text label ]
-                                        )
-                            }
+                            [ Html.i [ Html.Attributes.class "fas fa-trash-alt" ] [] ]
                         ]
                     |> InputGroup.view
                  ]
@@ -1398,8 +1410,6 @@ cellView cs size hand =
         , Html.Attributes.style "margin" "1px"
         , Html.Attributes.style "user-select" "none"
         , Html.Attributes.style "opacity" opacity
-
-        -- , Html.Events.onClick msg
         , Html.Events.onMouseEnter (HandHover (Just hand))
         , Html.Events.onMouseLeave (HandHover Nothing)
         ]
