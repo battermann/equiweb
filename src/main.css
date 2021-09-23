@@ -28,5 +28,9 @@ i {
   border-radius: 5px;
   cursor: pointer;
   box-shadow: 0 5px 5px -5px rgba(0, 0, 0, 0.5);
-  z-index: 99999;
+  z-index: 2000;
+}
+
+.input-group {
+  z-index: 0 !important;
 }

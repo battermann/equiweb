@@ -1,4 +1,4 @@
-module Poker.Data exposing (positionalRanges, ranges)
+module Poker.Data exposing (positionalRanges)
 
 import Maybe.Extra
 import Poker.Position exposing (Position(..))
@@ -42,11 +42,6 @@ positionalRanges =
     , PositionalRange BB "BB 3bet vs BU" bb3betVsBu
     , PositionalRange BB "BB 3bet vs SB" bb3betVsSb
     ]
-
-
-ranges : List ( String, List HandRange )
-ranges =
-    positionalRanges |> List.map (\pr -> Range.parseAndNormalize pr.range |> Result.map (Tuple.pair pr.label) |> Result.toMaybe) |> Maybe.Extra.values
 
 
 utgRfi : String

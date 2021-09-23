@@ -247,7 +247,7 @@ type Msg
     | SelectPresetRange Position String
     | SelectSuitedAces
     | SelectSuitedBroadways
-    | SelectRange (List HandRange)
+    | SelectRange String
     | SendSimulationRequest
     | ShowBoardSelectModal
     | ShowRangeSelectionModal Position
@@ -594,7 +594,7 @@ update msg model =
             Toasty.update Toasty.Defaults.config ToastyMsg subMsg model
 
         SelectRange range ->
-            ( { model | rangeSelection = range }, Cmd.none )
+            ( { model | rangeSelection = range |> Range.parseAndNormalize |> Result.withDefault [] }, Cmd.none )
 
         RemoveBoard ->
             ( { model | simulationRequestForm = setBoard "" model.simulationRequestForm }, Cmd.none )
@@ -822,12 +822,10 @@ view model =
     { title = "Equiweb"
     , body =
         [ Grid.container []
-            [ Html.div []
-                [ calculatorView model
-                , boardSelectionModalView model
-                , rangeSelectionModalView model
-                , Toasty.view Toasty.Defaults.config Toasty.Bootstrap.view ToastyMsg model.toasties
-                ]
+            [ calculatorView model
+            , boardSelectionModalView model
+            , rangeSelectionModalView model
+            , Toasty.view Toasty.Defaults.config Toasty.Bootstrap.view ToastyMsg model.toasties
             ]
         ]
     }
@@ -1383,10 +1381,11 @@ rangeSelectionModalView model =
                         , toggleButton =
                             Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Preset Ranges" ]
                         , items =
-                            Data.ranges
+                            Data.positionalRanges
+                                |> List.filter (.position >> (==) model.rangeSelectionPosition)
                                 |> List.map
-                                    (\( label, range ) ->
-                                        Dropdown.buttonItem [ Html.Events.onClick (SelectRange range) ] [ Html.text label ]
+                                    (\r ->
+                                        Dropdown.buttonItem [ Html.Events.onClick (SelectRange r.range) ] [ Html.text r.label ]
                                     )
                         }
                     ]
