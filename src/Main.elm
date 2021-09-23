@@ -1017,7 +1017,7 @@ inputFormView model =
                                 , Button.onClick RemoveBoard
                                 , Button.disabled (model.simulationRequestForm.board.value |> String.isEmpty)
                                 ]
-                                [ Html.i [ Html.Attributes.class "fas fa-trash-alt" ] [] ]
+                                [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
                             ]
                         |> InputGroup.view
                     ]
@@ -1102,7 +1102,7 @@ rangeInputView position field result dropdownState ranges =
                             , Button.onClick (RemoveRange position)
                             , Button.disabled (field.value |> String.isEmpty)
                             ]
-                            [ Html.i [ Html.Attributes.class "fas fa-trash-alt" ] [] ]
+                            [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
                         ]
                     |> InputGroup.view
                  ]
