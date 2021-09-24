@@ -187,7 +187,7 @@ init url key =
         maybeForm =
             UrlParser.parse urlParser url
     in
-    Ports.ready ()
+    Ports.initTooltips ()
         |> Tuple.pair
             { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
             , currentApiResponse = RemoteData.NotAsked
@@ -314,7 +314,7 @@ handleApiResponse model result =
                                 )
                     )
     in
-    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (Tuple.pair model.location)) ++ model.results }, Ports.ready () )
+    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (Tuple.pair model.location)) ++ model.results }, Ports.initTooltips () )
 
 
 sendSimulationRequest : Model -> ( Model, Cmd Msg )
@@ -1100,7 +1100,7 @@ rangeInputView position field result dropdownState ranges =
                                 ]
                                 [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
                             ]
-                        , InputGroup.span ([ Html.Attributes.class "tooltip-wrapper", Html.Attributes.style "height" "100%" ] ++ tooltip "Clear Range")
+                        , InputGroup.span (Html.Attributes.class "tooltip-wrapper" :: tooltip "Clear Range")
                             [ Button.button
                                 [ Button.outlineSecondary
                                 , Button.attrs [ Html.Attributes.tabindex -1 ]

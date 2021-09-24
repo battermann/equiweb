@@ -1,4 +1,4 @@
-port module Ports exposing (copyToClipboard, notifyCopyToClipboard, ready)
+port module Ports exposing (copyToClipboard, initTooltips, notifyCopyToClipboard)
 
 
 port copyToClipboard : ( String, String ) -> Cmd msg
@@ -7,4 +7,4 @@ port copyToClipboard : ( String, String ) -> Cmd msg
 port notifyCopyToClipboard : (String -> msg) -> Sub msg
 
 
-port ready : () -> Cmd msg
+port initTooltips : () -> Cmd msg

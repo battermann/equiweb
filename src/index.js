@@ -24,7 +24,7 @@ app.ports.copyToClipboard.subscribe(function (x) {
   app.ports.notifyCopyToClipboard.send(x[0]);
 });
 
-app.ports.ready.subscribe(_ => {
+app.ports.initTooltips.subscribe(_ => {
   requestAnimationFrame(_ => {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     tooltipTriggerList.map(function (tooltipTriggerEl) {
