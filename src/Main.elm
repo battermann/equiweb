@@ -187,7 +187,7 @@ init url key =
         maybeForm =
             UrlParser.parse urlParser url
     in
-    Cmd.none
+    Ports.ready ()
         |> Tuple.pair
             { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
             , currentApiResponse = RemoteData.NotAsked
@@ -314,7 +314,7 @@ handleApiResponse model result =
                                 )
                     )
     in
-    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (Tuple.pair model.location)) ++ model.results }, Cmd.none )
+    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (Tuple.pair model.location)) ++ model.results }, Ports.ready () )
 
 
 sendSimulationRequest : Model -> ( Model, Cmd Msg )
@@ -1008,16 +1008,18 @@ inputFormView model =
                             [ InputGroup.button
                                 [ Button.outlineSecondary
                                 , Button.onClick ShowBoardSelectModal
-                                , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                , Button.attrs (tooltip "Show Board Dialog" ++ [ Html.Attributes.tabindex -1 ])
                                 ]
                                 [ Html.img [ Html.Attributes.src "images/cards-icon.svg", Html.Attributes.width 20 ] [] ]
-                            , InputGroup.button
-                                [ Button.outlineSecondary
-                                , Button.attrs [ Html.Attributes.tabindex -1 ]
-                                , Button.onClick RemoveBoard
-                                , Button.disabled (model.simulationRequestForm.board.value |> String.isEmpty)
+                            , InputGroup.span (tooltip "Clear Board" ++ [ Html.Attributes.class "tooltip-wrapper" ])
+                                [ Button.button
+                                    [ Button.outlineSecondary
+                                    , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                    , Button.onClick RemoveBoard
+                                    , Button.disabled (model.simulationRequestForm.board.value |> String.isEmpty)
+                                    ]
+                                    [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
                                 ]
-                                [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
                             ]
                         |> InputGroup.view
                     ]
@@ -1075,7 +1077,7 @@ rangeInputView position field result dropdownState ranges =
                             { options = []
                             , toggleMsg = RangeDropdownMsg position
                             , toggleButton =
-                                Dropdown.toggle [ Button.outlineSecondary, Button.attrs [ Html.Attributes.tabindex -1 ] ] [ Html.i [ Html.Attributes.class "fas fa-bars" ] [] ]
+                                Dropdown.toggle [ Button.outlineSecondary, Button.attrs (tooltip "Select Range" ++ [ Html.Attributes.tabindex -1 ]) ] [ Html.i [ Html.Attributes.class "fas fa-bars" ] [] ]
                             , items =
                                 ranges
                                     |> List.map
@@ -1086,23 +1088,27 @@ rangeInputView position field result dropdownState ranges =
                         , InputGroup.button
                             [ Button.outlineSecondary
                             , Button.onClick (ShowRangeSelectionModal position)
-                            , Button.attrs [ Html.Attributes.tabindex -1, Html.Attributes.type_ "button" ]
+                            , Button.attrs ([ Html.Attributes.tabindex -1, Html.Attributes.type_ "button" ] ++ tooltip "Show Grid Dialog")
                             ]
                             [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
-                        , InputGroup.button
-                            [ Button.outlineSecondary
-                            , Button.onClick (RewriteRange position)
-                            , Button.disabled (rewritable field |> not)
-                            , Button.attrs [ Html.Attributes.tabindex -1 ]
+                        , InputGroup.span (Html.Attributes.class "tooltip-wrapper" :: tooltip "Normalize Range")
+                            [ Button.button
+                                [ Button.outlineSecondary
+                                , Button.onClick (RewriteRange position)
+                                , Button.disabled (rewritable field |> not)
+                                , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                ]
+                                [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
                             ]
-                            [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
-                        , InputGroup.button
-                            [ Button.outlineSecondary
-                            , Button.attrs [ Html.Attributes.tabindex -1 ]
-                            , Button.onClick (RemoveRange position)
-                            , Button.disabled (field.value |> String.isEmpty)
+                        , InputGroup.span ([ Html.Attributes.class "tooltip-wrapper", Html.Attributes.style "height" "100%" ] ++ tooltip "Clear Range")
+                            [ Button.button
+                                [ Button.outlineSecondary
+                                , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                , Button.onClick (RemoveRange position)
+                                , Button.disabled (field.value |> String.isEmpty)
+                                ]
+                                [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
                             ]
-                            [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
                         ]
                     |> InputGroup.view
                  ]
@@ -1254,7 +1260,7 @@ resultView url result =
 
                   else
                     Html.text "Preflop"
-                , Button.button [ Button.outlineSecondary, Button.onClick (CopyToClipboard "URL copied" (url |> Url.toString)) ]
+                , Button.button [ Button.outlineSecondary, Button.onClick (CopyToClipboard "URL copied" (url |> Url.toString)), Button.attrs (tooltip "Share URL") ]
                     [ Html.i [ Html.Attributes.class "fas fa-share-alt" ] []
                     ]
                 ]
@@ -1516,3 +1522,8 @@ subscriptions model =
         , Ports.notifyCopyToClipboard NotifyCopyToClipboard
         , Dropdown.subscriptions model.rangeSelectionDropdown RangeSelectionDropdownMsg
         ]
+
+
+tooltip : String -> List (Html.Attribute msg)
+tooltip msg =
+    [ Html.Attributes.attribute "data-bs-toggle" "tooltip", Html.Attributes.attribute "data-bs-placement" "top", Html.Attributes.title msg ]
