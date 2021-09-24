@@ -1,8 +1,6 @@
 module Poker.Data exposing (positionalRanges)
 
-import Maybe.Extra
 import Poker.Position exposing (Position(..))
-import Poker.Range as Range exposing (HandRange)
 
 
 type alias PositionalRange =

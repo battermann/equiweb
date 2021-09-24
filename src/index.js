@@ -1,4 +1,5 @@
 import 'bootstrap/dist/css/bootstrap.min.css'
+window.bootstrap = require('bootstrap/dist/js/bootstrap.bundle.min.js')
 // import 'bootswatch/dist/darkly/bootstrap.min.css'
 import './main.css'
 import { Elm } from './Main.elm';
@@ -21,4 +22,15 @@ app.ports.copyToClipboard.subscribe(function (x) {
   document.execCommand('copy');
   inputc.parentNode.removeChild(inputc);
   app.ports.notifyCopyToClipboard.send(x[0]);
+});
+
+app.ports.initTooltips.subscribe(_ => {
+  requestAnimationFrame(_ => {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl, {
+        trigger: 'hover'
+      })
+    });
+  })
 });

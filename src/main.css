@@ -31,6 +31,18 @@ i {
   z-index: 2000;
 }
 
-.input-group {
-  z-index: 0 !important;
+.tooltip-wrapper {
+    margin:unset;
+    display: inline-block;
+    align-items: unset;
+    padding:unset;
+    font-size: unset;
+    font-weight: unset;
+    line-height: unset;
+    color:unset;
+    text-align: unset;
+    white-space: unset;
+    background-color: unset;
+    border:unset;
+    border-radius:unset;
 }
