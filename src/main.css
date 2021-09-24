@@ -31,6 +31,10 @@ i {
   z-index: 2000;
 }
 
+.tooltip {
+  z-index: 1049 !important;
+}
+
 .tooltip-wrapper {
     margin:unset;
     display: inline-block;
