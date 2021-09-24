@@ -35,6 +35,10 @@ i {
   z-index: 1049 !important;
 }
 
+.input-group {
+  z-index: 0 !important;
+}
+
 .tooltip-wrapper {
     margin:unset;
     display: inline-block;
