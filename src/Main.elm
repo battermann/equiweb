@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Bootstrap.Alert as Alert
+import Bootstrap.Alt.Popover as Popover
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
 import Bootstrap.Card.Block as Block
@@ -46,9 +47,6 @@ import Result.Extra
 import Round
 import Svg
 import Svg.Attributes
-import Toasty
-import Toasty.Bootstrap exposing (Toast)
-import Toasty.Defaults
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as UrlParser exposing ((<?>), Parser)
@@ -140,11 +138,41 @@ type Mouse
     | Pressed
 
 
+type alias PopoverStates =
+    { rangeSelect : Popover.State
+    , openGrid : Popover.State
+    , normalize : Popover.State
+    , clear : Popover.State
+    }
+
+
+initialPopoverStates : PopoverStates
+initialPopoverStates =
+    { rangeSelect = Popover.initialState
+    , openGrid = Popover.initialState
+    , normalize = Popover.initialState
+    , clear = Popover.initialState
+    }
+
+
+type alias SharingPopoverStates =
+    { shareUrl : Popover.State
+    , tooltipText : String
+    }
+
+
+initialSharingPopoverStates : SharingPopoverStates
+initialSharingPopoverStates =
+    { shareUrl = Popover.initialState
+    , tooltipText = "Copy URL"
+    }
+
+
 type alias Model =
     { navKey : Navigation.Key
     , simulationRequestForm : SimulationRequestForm
     , currentApiResponse : WebData SimulationResult
-    , results : List ( Url, SimulationResult )
+    , results : List ( SharingPopoverStates, Url, SimulationResult )
     , boardSelectModalVisibility : Modal.Visibility
     , rangeSelectionModalVisibility : Modal.Visibility
     , boardSelection : List Card
@@ -165,8 +193,37 @@ type alias Model =
     , rangeSelectionDropdown : Dropdown.State
     , location : Url
     , rangeSlider : Maybe Int
-    , toasties : Toasty.Stack Toast
+    , popoverStateUtg : PopoverStates
+    , popoverStateMp : PopoverStates
+    , popoverStateCo : PopoverStates
+    , popoverStateBu : PopoverStates
+    , popoverStateSb : PopoverStates
+    , popoverStateBb : PopoverStates
+    , popoverStateBoard : Popover.State
+    , popoverStateClearBoard : Popover.State
     }
+
+
+popoverState : Position -> Model -> PopoverStates
+popoverState position model =
+    case position of
+        UTG ->
+            model.popoverStateUtg
+
+        MP ->
+            model.popoverStateMp
+
+        CO ->
+            model.popoverStateCo
+
+        BU ->
+            model.popoverStateBu
+
+        SB ->
+            model.popoverStateSb
+
+        BB ->
+            model.popoverStateBb
 
 
 main : Program () Model Msg
@@ -187,7 +244,7 @@ init url key =
         maybeForm =
             UrlParser.parse urlParser url
     in
-    Ports.initTooltips ()
+    Cmd.none
         |> Tuple.pair
             { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
             , currentApiResponse = RemoteData.NotAsked
@@ -213,7 +270,14 @@ init url key =
             , rangeSelectionDropdown = Dropdown.initialState
             , location = url
             , rangeSlider = Nothing
-            , toasties = Toasty.initialState
+            , popoverStateUtg = initialPopoverStates
+            , popoverStateMp = initialPopoverStates
+            , popoverStateCo = initialPopoverStates
+            , popoverStateBu = initialPopoverStates
+            , popoverStateSb = initialPopoverStates
+            , popoverStateBb = initialPopoverStates
+            , popoverStateBoard = Popover.initialState
+            , popoverStateClearBoard = Popover.initialState
             }
 
 
@@ -228,12 +292,19 @@ type Msg
     | CloseRangeSelectionModal
     | ConfirmBoardSelection
     | ConfirmRangeSelection
-    | CopyToClipboard String String
-    | NotifyCopyToClipboard String
+    | CopyToClipboard String Int
     | HandHover (Maybe Hand)
     | KeyDown RawKey
     | MouseDown
     | MouseUp
+    | NotifyCopyToClipboard Int
+    | PopoverStateBoard Popover.State
+    | PopoverStateClear Position Popover.State
+    | PopoverStateClearBoard Popover.State
+    | PopoverStateNormalize Position Popover.State
+    | PopoverStateOpenGrid Position Popover.State
+    | PopoverStateSelectRange Position Popover.State
+    | PopoverStateSharing Int Popover.State
     | RangeDropdownMsg Position Dropdown.State
     | RangeInput Position String
     | RangeSelectionDropdownMsg Dropdown.State
@@ -245,14 +316,13 @@ type Msg
     | SelectOffsuitBroadways
     | SelectPairs
     | SelectPresetRange Position String
+    | SelectRange String
     | SelectSuitedAces
     | SelectSuitedBroadways
-    | SelectRange String
     | SendSimulationRequest
     | ShowBoardSelectModal
     | ShowRangeSelectionModal Position
     | ToggleBoardSelection Card
-    | ToastyMsg (Toasty.Msg Toast)
     | UrlChange Url
 
 
@@ -314,7 +384,7 @@ handleApiResponse model result =
                                 )
                     )
     in
-    ( { model | currentApiResponse = sr, results = (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (Tuple.pair model.location)) ++ model.results }, Ports.initTooltips () )
+    ( { model | currentApiResponse = sr, results = model.results ++ (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (\r -> ( initialSharingPopoverStates, model.location, r ))) }, Cmd.none )
 
 
 sendSimulationRequest : Model -> ( Model, Cmd Msg )
@@ -573,8 +643,8 @@ update msg model =
             , Cmd.none
             )
 
-        CopyToClipboard notificaionMsg text ->
-            ( model, Ports.copyToClipboard ( notificaionMsg, text ) )
+        CopyToClipboard text index ->
+            ( model, Ports.copyToClipboard { text = text, index = index } )
 
         RangeSlider value ->
             ( { model
@@ -587,11 +657,8 @@ update msg model =
         RemoveRange position ->
             ( { model | simulationRequestForm = setRange position "" model.simulationRequestForm }, Cmd.none )
 
-        NotifyCopyToClipboard notificationMsg ->
-            ( model, Cmd.none ) |> addToast (Toasty.Bootstrap.Success Nothing notificationMsg)
-
-        ToastyMsg subMsg ->
-            Toasty.update Toasty.Defaults.config ToastyMsg subMsg model
+        NotifyCopyToClipboard index ->
+            ( { model | results = model.results |> List.Extra.updateAt index (\( pos, url, sr ) -> ( { pos | tooltipText = "Copied! " }, url, sr )) }, Cmd.none )
 
         SelectRange range ->
             ( { model | rangeSelection = range |> Range.parseAndNormalize |> Result.withDefault [] }, Cmd.none )
@@ -599,10 +666,62 @@ update msg model =
         RemoveBoard ->
             ( { model | simulationRequestForm = setBoard "" model.simulationRequestForm }, Cmd.none )
 
+        PopoverStateSelectRange position state ->
+            Cmd.none |> Tuple.pair (updatePopoverState (\s -> { s | rangeSelect = state }) position model)
 
-addToast : Toast -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-addToast toast ( model, cmd ) =
-    Toasty.addToast Toasty.Bootstrap.config ToastyMsg toast ( model, cmd )
+        PopoverStateOpenGrid position state ->
+            Cmd.none |> Tuple.pair (updatePopoverState (\s -> { s | openGrid = state }) position model)
+
+        PopoverStateNormalize position state ->
+            Cmd.none |> Tuple.pair (updatePopoverState (\s -> { s | normalize = state }) position model)
+
+        PopoverStateClear position state ->
+            Cmd.none |> Tuple.pair (updatePopoverState (\s -> { s | clear = state }) position model)
+
+        PopoverStateBoard state ->
+            ( { model | popoverStateBoard = state }, Cmd.none )
+
+        PopoverStateClearBoard state ->
+            ( { model | popoverStateClearBoard = state }, Cmd.none )
+
+        PopoverStateSharing index state ->
+            let
+                resestStateIfNotActive pos (Popover.State s) =
+                    if s.isActive then
+                        { pos | shareUrl = state }
+
+                    else
+                        { initialSharingPopoverStates | shareUrl = state }
+            in
+            ( { model
+                | results =
+                    model.results
+                        |> List.Extra.updateAt ((model.results |> List.length) - index - 1) (\( pos, url, rs ) -> ( resestStateIfNotActive pos state, url, rs ))
+              }
+            , Cmd.none
+            )
+
+
+updatePopoverState : (PopoverStates -> PopoverStates) -> Position -> Model -> Model
+updatePopoverState f position model =
+    case position of
+        UTG ->
+            { model | popoverStateUtg = f model.popoverStateUtg }
+
+        MP ->
+            { model | popoverStateMp = f model.popoverStateMp }
+
+        CO ->
+            { model | popoverStateCo = f model.popoverStateCo }
+
+        BU ->
+            { model | popoverStateBu = f model.popoverStateBu }
+
+        SB ->
+            { model | popoverStateSb = f model.popoverStateSb }
+
+        BB ->
+            { model | popoverStateBb = f model.popoverStateBb }
 
 
 toggleHandSelection : HandRange -> Model -> Model
@@ -825,7 +944,6 @@ view model =
             [ calculatorView model
             , boardSelectionModalView model
             , rangeSelectionModalView model
-            , Toasty.view Toasty.Defaults.config Toasty.Bootstrap.view ToastyMsg model.toasties
             ]
         ]
     }
@@ -872,7 +990,7 @@ calculatorView model =
                                         )
                         ]
                  )
-                    :: (model.results |> List.map (\( url, res ) -> resultView url res))
+                    :: (model.results |> List.reverse |> List.indexedMap (\index ( popoverStates, url, res ) -> resultView index popoverStates url res))
                 )
             ]
         ]
@@ -985,12 +1103,12 @@ cardView msg selectState cursor refWidth card =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ rangeInputView UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Data.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Data.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Data.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Data.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Data.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Data.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
+        [ rangeInputView (popoverState UTG model) UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Data.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState MP model) MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Data.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState CO model) CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Data.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState BU model) BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Data.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState SB model) SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Data.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState BB model) BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Data.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
         , Form.row
             []
             [ Form.col [ Col.sm10 ]
@@ -1005,20 +1123,36 @@ inputFormView model =
                             )
                         )
                         |> InputGroup.predecessors
-                            [ InputGroup.button
-                                [ Button.outlineSecondary
-                                , Button.onClick ShowBoardSelectModal
-                                , Button.attrs (tooltip "Show Board Dialog" ++ [ Html.Attributes.tabindex -1 ])
+                            [ InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
+                                [ Popover.config
+                                    (Button.button
+                                        [ Button.outlineSecondary
+                                        , Button.onClick ShowBoardSelectModal
+                                        , Button.attrs (Html.Attributes.tabindex -1 :: Popover.onHover model.popoverStateBoard PopoverStateBoard)
+                                        ]
+                                        [ Html.img [ Html.Attributes.src "images/cards-icon.svg", Html.Attributes.width 20 ] [] ]
+                                    )
+                                    |> Popover.top
+                                    |> Popover.content []
+                                        [ Html.text "Open Board Dialog" ]
+                                    |> Popover.view model.popoverStateBoard
                                 ]
-                                [ Html.img [ Html.Attributes.src "images/cards-icon.svg", Html.Attributes.width 20 ] [] ]
-                            , InputGroup.span (tooltip "Clear Board" ++ [ Html.Attributes.class "tooltip-wrapper" ])
-                                [ Button.button
-                                    [ Button.outlineSecondary
-                                    , Button.attrs [ Html.Attributes.tabindex -1 ]
-                                    , Button.onClick RemoveBoard
-                                    , Button.disabled (model.simulationRequestForm.board.value |> String.isEmpty)
-                                    ]
-                                    [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
+                            , InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
+                                [ Popover.config
+                                    (Html.div (Popover.onHover model.popoverStateClearBoard PopoverStateClearBoard)
+                                        [ Button.button
+                                            [ Button.outlineSecondary
+                                            , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                            , Button.onClick RemoveBoard
+                                            , Button.disabled (model.simulationRequestForm.board.value |> String.isEmpty)
+                                            ]
+                                            [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
+                                        ]
+                                    )
+                                    |> Popover.top
+                                    |> Popover.content []
+                                        [ Html.text "Clear Board" ]
+                                    |> Popover.view model.popoverStateClearBoard
                                 ]
                             ]
                         |> InputGroup.view
@@ -1050,8 +1184,8 @@ inputFormView model =
         ]
 
 
-rangeInputView : Position -> Form.Field (List HandRange) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
-rangeInputView position field result dropdownState ranges =
+rangeInputView : PopoverStates -> Position -> Form.Field (List HandRange) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
+rangeInputView popoverStates position field result dropdownState ranges =
     Form.row []
         [ Form.col []
             [ Form.group []
@@ -1072,42 +1206,74 @@ rangeInputView position field result dropdownState ranges =
                         )
                     )
                     |> InputGroup.predecessors
-                        [ InputGroup.dropdown
-                            dropdownState
-                            { options = []
-                            , toggleMsg = RangeDropdownMsg position
-                            , toggleButton =
-                                Dropdown.toggle [ Button.outlineSecondary, Button.attrs (tooltip "Select Range" ++ [ Html.Attributes.tabindex -1 ]) ] [ Html.i [ Html.Attributes.class "fas fa-bars" ] [] ]
-                            , items =
-                                ranges
-                                    |> List.map
-                                        (\( label, range ) ->
-                                            Dropdown.buttonItem [ Html.Events.onClick (SelectPresetRange position range) ] [ Html.text label ]
-                                        )
-                            }
-                        , InputGroup.button
-                            [ Button.outlineSecondary
-                            , Button.onClick (ShowRangeSelectionModal position)
-                            , Button.attrs ([ Html.Attributes.tabindex -1, Html.Attributes.type_ "button" ] ++ tooltip "Show Grid Dialog")
+                        [ InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
+                            [ Popover.config
+                                (Dropdown.dropdown
+                                    dropdownState
+                                    { options = [ Dropdown.attrs (Popover.onHover popoverStates.rangeSelect (PopoverStateSelectRange position)) ]
+                                    , toggleMsg = RangeDropdownMsg position
+                                    , toggleButton =
+                                        Dropdown.toggle [ Button.outlineSecondary, Button.attrs [ Html.Attributes.tabindex -1 ] ] [ Html.i [ Html.Attributes.class "fas fa-bars" ] [] ]
+                                    , items =
+                                        ranges
+                                            |> List.map
+                                                (\( label, range ) ->
+                                                    Dropdown.buttonItem [ Html.Events.onClick (SelectPresetRange position range) ] [ Html.text label ]
+                                                )
+                                    }
+                                )
+                                |> Popover.top
+                                |> Popover.content []
+                                    [ Html.text "Select Range" ]
+                                |> Popover.view popoverStates.rangeSelect
                             ]
-                            [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
-                        , InputGroup.span (Html.Attributes.class "tooltip-wrapper" :: tooltip "Normalize Range")
-                            [ Button.button
-                                [ Button.outlineSecondary
-                                , Button.onClick (RewriteRange position)
-                                , Button.disabled (rewritable field |> not)
-                                , Button.attrs [ Html.Attributes.tabindex -1 ]
-                                ]
-                                [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
+                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper", Html.Attributes.class "z-index-0" ]
+                            [ Popover.config
+                                (Button.button
+                                    [ Button.outlineSecondary
+                                    , Button.onClick (ShowRangeSelectionModal position)
+                                    , Button.attrs ([ Html.Attributes.tabindex -1, Html.Attributes.type_ "button" ] ++ Popover.onHover popoverStates.openGrid (PopoverStateOpenGrid position))
+                                    ]
+                                    [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
+                                )
+                                |> Popover.top
+                                |> Popover.content []
+                                    [ Html.text "Open Grid Dialog" ]
+                                |> Popover.view popoverStates.openGrid
                             ]
-                        , InputGroup.span (Html.Attributes.class "tooltip-wrapper" :: tooltip "Clear Range")
-                            [ Button.button
-                                [ Button.outlineSecondary
-                                , Button.attrs [ Html.Attributes.tabindex -1 ]
-                                , Button.onClick (RemoveRange position)
-                                , Button.disabled (field.value |> String.isEmpty)
-                                ]
-                                [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
+                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper", Html.Attributes.class "z-index-0" ]
+                            [ Popover.config
+                                (Html.div (Popover.onHover popoverStates.normalize (PopoverStateNormalize position))
+                                    [ Button.button
+                                        [ Button.outlineSecondary
+                                        , Button.onClick (RewriteRange position)
+                                        , Button.disabled (rewritable field |> not)
+                                        , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                        ]
+                                        [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
+                                    ]
+                                )
+                                |> Popover.top
+                                |> Popover.content []
+                                    [ Html.text "Normalize Range" ]
+                                |> Popover.view popoverStates.normalize
+                            ]
+                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper", Html.Attributes.class "z-index-0" ]
+                            [ Popover.config
+                                (Html.div (Popover.onHover popoverStates.clear (PopoverStateClear position))
+                                    [ Button.button
+                                        [ Button.outlineSecondary
+                                        , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                        , Button.onClick (RemoveRange position)
+                                        , Button.disabled (field.value |> String.isEmpty)
+                                        ]
+                                        [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
+                                    ]
+                                )
+                                |> Popover.top
+                                |> Popover.content []
+                                    [ Html.text "Clear Range" ]
+                                |> Popover.view popoverStates.clear
                             ]
                         ]
                     |> InputGroup.view
@@ -1250,8 +1416,8 @@ isBoardSelectionValid model =
             False
 
 
-resultView : Url -> SimulationResult -> Card.Config Msg
-resultView url result =
+resultView : Int -> SharingPopoverStates -> Url -> SimulationResult -> Card.Config Msg
+resultView index popoverStates url result =
     Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
         |> Card.headerH4 []
             [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.alignItemsCenter ]
@@ -1260,9 +1426,19 @@ resultView url result =
 
                   else
                     Html.text "Preflop"
-                , Button.button [ Button.outlineSecondary, Button.onClick (CopyToClipboard "URL copied" (url |> Url.toString)), Button.attrs (tooltip "Share URL") ]
-                    [ Html.i [ Html.Attributes.class "fas fa-share-alt" ] []
-                    ]
+                , Popover.config
+                    (Button.button
+                        [ Button.outlineSecondary
+                        , Button.onClick (CopyToClipboard (url |> Url.toString) index)
+                        , Button.attrs (Popover.onHover popoverStates.shareUrl (PopoverStateSharing index))
+                        ]
+                        [ Html.i [ Html.Attributes.class "fas fa-share-alt" ] []
+                        ]
+                    )
+                    |> Popover.top
+                    |> Popover.content []
+                        [ Html.text popoverStates.tooltipText ]
+                    |> Popover.view popoverStates.shareUrl
                 ]
             ]
         |> Card.block []
@@ -1522,8 +1698,3 @@ subscriptions model =
         , Ports.notifyCopyToClipboard NotifyCopyToClipboard
         , Dropdown.subscriptions model.rangeSelectionDropdown RangeSelectionDropdownMsg
         ]
-
-
-tooltip : String -> List (Html.Attribute msg)
-tooltip msg =
-    [ Html.Attributes.attribute "data-bs-toggle" "tooltip", Html.Attributes.attribute "data-bs-placement" "top", Html.Attributes.title msg ]

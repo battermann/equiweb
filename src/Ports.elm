@@ -1,10 +1,13 @@
-port module Ports exposing (copyToClipboard, initTooltips, notifyCopyToClipboard)
+port module Ports exposing (CopyToClipboardMsg, copyToClipboard, notifyCopyToClipboard)
 
 
-port copyToClipboard : ( String, String ) -> Cmd msg
+type alias CopyToClipboardMsg =
+    { text : String
+    , index : Int
+    }
 
 
-port notifyCopyToClipboard : (String -> msg) -> Sub msg
+port copyToClipboard : CopyToClipboardMsg -> Cmd msg
 
 
-port initTooltips : () -> Cmd msg
+port notifyCopyToClipboard : (Int -> msg) -> Sub msg
