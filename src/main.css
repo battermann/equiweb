@@ -24,33 +24,18 @@ i {
   color : #555555;
 }
 
-.toasty-container {
-  border-radius: 5px;
-  cursor: pointer;
-  box-shadow: 0 5px 5px -5px rgba(0, 0, 0, 0.5);
-  z-index: 2000;
-}
-
-.tooltip {
-  z-index: 1049 !important;
-}
-
-.input-group {
-  z-index: 0 !important;
-}
-
 .tooltip-wrapper {
-    margin:unset;
-    display: inline-block;
-    align-items: unset;
-    padding:unset;
-    font-size: unset;
-    font-weight: unset;
-    line-height: unset;
-    color:unset;
-    text-align: unset;
-    white-space: unset;
-    background-color: unset;
-    border:unset;
-    border-radius:unset;
+  padding:unset;
+  background-color: unset;
+  border:unset;
+}
+
+.popover-body {
+  white-space:nowrap;
+  max-width:none;
+}
+  
+.popover {
+  max-width:none;
+  z-index: 1049 !important;
 }

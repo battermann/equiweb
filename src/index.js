@@ -16,21 +16,15 @@ serviceWorker.unregister();
 
 app.ports.copyToClipboard.subscribe(function (x) {
   var inputc = document.body.appendChild(document.createElement("input"));
-  inputc.value = x[1];
+  inputc.value = x.text;
   inputc.focus();
   inputc.select();
-  document.execCommand('copy');
-  inputc.parentNode.removeChild(inputc);
-  app.ports.notifyCopyToClipboard.send(x[0]);
-});
-
-app.ports.initTooltips.subscribe(_ => {
-  requestAnimationFrame(_ => {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl, {
-        trigger: 'hover'
-      })
-    });
-  })
+  try {
+    document.execCommand('copy');
+    inputc.parentNode.removeChild(inputc);
+    app.ports.notifyCopyToClipboard.send(x.index);
+  }
+  catch (err) {
+    console.log('Oops, unable to copy');
+  }
 });
