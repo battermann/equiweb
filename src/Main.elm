@@ -27,7 +27,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Http
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Error)
 import Json.Decode.Pipeline as P
 import Keyboard exposing (RawKey)
 import List.Extra
@@ -41,10 +41,12 @@ import Poker.Position as Position exposing (Position(..))
 import Poker.Range as Range exposing (HandRange)
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
-import Ports
+import Ports exposing (CopiedToClipboardMsg, SharingType(..))
 import RemoteData exposing (WebData)
 import Result.Extra
 import Round
+import Sharing
+import SimulationResult exposing (ResultLine, SimulationResult)
 import Svg
 import Svg.Attributes
 import Url exposing (Url)
@@ -116,23 +118,6 @@ setAllFormFieldsToEdited form =
     }
 
 
-type alias ResultLine =
-    { range : List HandRange
-    , equity : Float
-    }
-
-
-type alias SimulationResult =
-    { board : List Card
-    , utg : Maybe ResultLine
-    , mp : Maybe ResultLine
-    , co : Maybe ResultLine
-    , bu : Maybe ResultLine
-    , sb : Maybe ResultLine
-    , bb : Maybe ResultLine
-    }
-
-
 type Mouse
     = Released
     | Pressed
@@ -157,14 +142,18 @@ initialPopoverStates =
 
 type alias SharingPopoverStates =
     { shareUrl : Popover.State
-    , tooltipText : String
+    , shareUrlTooltipText : String
+    , shareMd : Popover.State
+    , shareMdTooltipText : String
     }
 
 
 initialSharingPopoverStates : SharingPopoverStates
 initialSharingPopoverStates =
     { shareUrl = Popover.initialState
-    , tooltipText = "Copy URL"
+    , shareUrlTooltipText = "Copy URL"
+    , shareMd = Popover.initialState
+    , shareMdTooltipText = "Copy Markdown"
     }
 
 
@@ -292,19 +281,19 @@ type Msg
     | CloseRangeSelectionModal
     | ConfirmBoardSelection
     | ConfirmRangeSelection
-    | CopyToClipboard String Int
+    | CopyToClipboard Int SharingType
     | HandHover (Maybe Hand)
     | KeyDown RawKey
     | MouseDown
     | MouseUp
-    | NotifyCopyToClipboard Int
+    | NotifyCopyToClipboard (Result Error CopiedToClipboardMsg)
     | PopoverStateBoard Popover.State
     | PopoverStateClear Position Popover.State
     | PopoverStateClearBoard Popover.State
     | PopoverStateNormalize Position Popover.State
     | PopoverStateOpenGrid Position Popover.State
     | PopoverStateSelectRange Position Popover.State
-    | PopoverStateSharing Int Popover.State
+    | PopoverStateSharing Int SharingType Popover.State
     | RangeDropdownMsg Position Dropdown.State
     | RangeInput Position String
     | RangeSelectionDropdownMsg Dropdown.State
@@ -643,8 +632,22 @@ update msg model =
             , Cmd.none
             )
 
-        CopyToClipboard text index ->
-            ( model, Ports.copyToClipboard { text = text, index = index } )
+        CopyToClipboard index sharingType ->
+            let
+                maybeText =
+                    case sharingType of
+                        URL ->
+                            Just (model.location |> Url.toString)
+
+                        Markdown ->
+                            model.results |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.markdown model.location)
+            in
+            case maybeText of
+                Just text ->
+                    ( model, Ports.copyToClipboard (Ports.copyToclipboardMsgEncoder { text = text, index = index, sharingType = sharingType }) )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         RangeSlider value ->
             ( { model
@@ -657,8 +660,28 @@ update msg model =
         RemoveRange position ->
             ( { model | simulationRequestForm = setRange position "" model.simulationRequestForm }, Cmd.none )
 
-        NotifyCopyToClipboard index ->
-            ( { model | results = model.results |> List.Extra.updateAt index (\( pos, url, sr ) -> ( { pos | tooltipText = "Copied! " }, url, sr )) }, Cmd.none )
+        NotifyCopyToClipboard (Err _) ->
+            ( model, Cmd.none )
+
+        NotifyCopyToClipboard (Ok copiedMsg) ->
+            ( { model
+                | results =
+                    model.results
+                        |> List.Extra.updateAt copiedMsg.index
+                            (\( pos, url, sr ) ->
+                                ( case copiedMsg.sharingType of
+                                    URL ->
+                                        { pos | shareUrlTooltipText = "Copied! " }
+
+                                    Markdown ->
+                                        { pos | shareMdTooltipText = "Copied! " }
+                                , url
+                                , sr
+                                )
+                            )
+              }
+            , Cmd.none
+            )
 
         SelectRange range ->
             ( { model | rangeSelection = range |> Range.parseAndNormalize |> Result.withDefault [] }, Cmd.none )
@@ -684,14 +707,24 @@ update msg model =
         PopoverStateClearBoard state ->
             ( { model | popoverStateClearBoard = state }, Cmd.none )
 
-        PopoverStateSharing index state ->
+        PopoverStateSharing index sharingType state ->
             let
                 resestStateIfNotActive pos (Popover.State s) =
                     if s.isActive then
-                        { pos | shareUrl = state }
+                        case sharingType of
+                            URL ->
+                                { pos | shareUrl = state }
+
+                            Markdown ->
+                                { pos | shareMd = state }
 
                     else
-                        { initialSharingPopoverStates | shareUrl = state }
+                        case sharingType of
+                            URL ->
+                                { initialSharingPopoverStates | shareUrl = state }
+
+                            Markdown ->
+                                { initialSharingPopoverStates | shareMd = state }
             in
             ( { model
                 | results =
@@ -750,22 +783,22 @@ rewrite : Position -> SimulationRequestForm -> SimulationRequestForm
 rewrite position form =
     case position of
         UTG ->
-            { form | utg = Form.rewrite form.utg Range.rangesToNormalizedString }
+            { form | utg = Form.rewrite form.utg Range.toNormalizedString }
 
         MP ->
-            { form | mp = Form.rewrite form.mp Range.rangesToNormalizedString }
+            { form | mp = Form.rewrite form.mp Range.toNormalizedString }
 
         CO ->
-            { form | co = Form.rewrite form.co Range.rangesToNormalizedString }
+            { form | co = Form.rewrite form.co Range.toNormalizedString }
 
         BU ->
-            { form | bu = Form.rewrite form.bu Range.rangesToNormalizedString }
+            { form | bu = Form.rewrite form.bu Range.toNormalizedString }
 
         SB ->
-            { form | sb = Form.rewrite form.sb Range.rangesToNormalizedString }
+            { form | sb = Form.rewrite form.sb Range.toNormalizedString }
 
         BB ->
-            { form | bb = Form.rewrite form.bb Range.rangesToNormalizedString }
+            { form | bb = Form.rewrite form.bb Range.toNormalizedString }
 
 
 confirmRangeSelection : Position -> Model -> ( Model, Cmd Msg )
@@ -872,7 +905,7 @@ rangeQueryParameter position field =
             []
 
         Ok range ->
-            [ Url.Builder.string (position |> Position.toString |> String.toLower) (range |> Range.rangesToNormalizedString |> String.toLower) ]
+            [ Url.Builder.string (position |> Position.toString |> String.toLower) (range |> Range.toNormalizedString |> String.toLower) ]
 
 
 confirmBoardSelection : Model -> ( Model, Cmd Msg )
@@ -990,7 +1023,7 @@ calculatorView model =
                                         )
                         ]
                  )
-                    :: (model.results |> List.reverse |> List.indexedMap (\index ( popoverStates, url, res ) -> resultView index popoverStates url res))
+                    :: (model.results |> List.reverse |> List.indexedMap (\index ( popoverStates, _, res ) -> resultView index popoverStates res))
                 )
             ]
         ]
@@ -1316,7 +1349,7 @@ numberOfCombosView ranges =
 rewritable : Form.Field (List HandRange) -> Bool
 rewritable field =
     field.value
-        /= (field.validated |> Result.withDefault [] |> Range.rangesToNormalizedString)
+        /= (field.validated |> Result.withDefault [] |> Range.toNormalizedString)
         && (field.validated |> Result.Extra.isOk)
 
 
@@ -1416,8 +1449,8 @@ isBoardSelectionValid model =
             False
 
 
-resultView : Int -> SharingPopoverStates -> Url -> SimulationResult -> Card.Config Msg
-resultView index popoverStates url result =
+resultView : Int -> SharingPopoverStates -> SimulationResult -> Card.Config Msg
+resultView index popoverStates result =
     Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
         |> Card.headerH4 []
             [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.alignItemsCenter ]
@@ -1426,19 +1459,34 @@ resultView index popoverStates url result =
 
                   else
                     Html.text "Preflop"
-                , Popover.config
-                    (Button.button
-                        [ Button.outlineSecondary
-                        , Button.onClick (CopyToClipboard (url |> Url.toString) index)
-                        , Button.attrs (Popover.onHover popoverStates.shareUrl (PopoverStateSharing index))
-                        ]
-                        [ Html.i [ Html.Attributes.class "fas fa-share-alt" ] []
-                        ]
-                    )
-                    |> Popover.top
-                    |> Popover.content []
-                        [ Html.text popoverStates.tooltipText ]
-                    |> Popover.view popoverStates.shareUrl
+                , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "3px" ]
+                    [ Popover.config
+                        (Button.button
+                            [ Button.outlineSecondary
+                            , Button.onClick (CopyToClipboard index Markdown)
+                            , Button.attrs (Popover.onHover popoverStates.shareMd (PopoverStateSharing index Markdown))
+                            ]
+                            [ Html.i [ Html.Attributes.class "fab fa-markdown" ] []
+                            ]
+                        )
+                        |> Popover.top
+                        |> Popover.content []
+                            [ Html.text popoverStates.shareMdTooltipText ]
+                        |> Popover.view popoverStates.shareMd
+                    , Popover.config
+                        (Button.button
+                            [ Button.outlineSecondary
+                            , Button.onClick (CopyToClipboard index URL)
+                            , Button.attrs (Popover.onHover popoverStates.shareUrl (PopoverStateSharing index URL))
+                            ]
+                            [ Html.i [ Html.Attributes.class "fas fa-share-alt" ] []
+                            ]
+                        )
+                        |> Popover.top
+                        |> Popover.content []
+                            [ Html.text popoverStates.shareUrlTooltipText ]
+                        |> Popover.view popoverStates.shareUrl
+                    ]
                 ]
             ]
         |> Card.block []
@@ -1470,7 +1518,7 @@ rowView position resultLine =
         Just result ->
             [ Table.tr []
                 [ Table.td [] [ Html.text (position |> Position.toString) ]
-                , Table.td [] [ Html.text (result.range |> Range.rangesToNormalizedString) ]
+                , Table.td [] [ Html.text (result.range |> Range.toNormalizedString) ]
                 , Table.td [] [ Html.text (Round.round 2 (result.equity * 100) ++ "%") ]
                 ]
             ]
@@ -1695,6 +1743,6 @@ subscriptions model =
         , Dropdown.subscriptions model.rangeDropdownStateBu (RangeDropdownMsg BU)
         , Dropdown.subscriptions model.rangeDropdownStateSb (RangeDropdownMsg SB)
         , Dropdown.subscriptions model.rangeDropdownStateBb (RangeDropdownMsg BB)
-        , Ports.notifyCopyToClipboard NotifyCopyToClipboard
+        , Ports.notifyCopyToClipboard (Decode.decodeValue Ports.copiedToClipboardMsgDecoder >> NotifyCopyToClipboard)
         , Dropdown.subscriptions model.rangeSelectionDropdown RangeSelectionDropdownMsg
         ]

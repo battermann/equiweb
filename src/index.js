@@ -15,14 +15,14 @@ var app = Elm.Main.init({
 serviceWorker.unregister();
 
 app.ports.copyToClipboard.subscribe(function (x) {
-  var inputc = document.body.appendChild(document.createElement("input"));
-  inputc.value = x.text;
-  inputc.focus();
-  inputc.select();
+  var textArea = document.body.appendChild(document.createElement("TEXTAREA"));
+  textArea.innerHTML = x.text;
+  textArea.focus();
+  textArea.select();
   try {
     document.execCommand('copy');
-    inputc.parentNode.removeChild(inputc);
-    app.ports.notifyCopyToClipboard.send(x.index);
+    textArea.parentNode.removeChild(textArea);
+    app.ports.notifyCopyToClipboard.send({ "index": x.index, "sharingType": x.sharingType });
   }
   catch (err) {
     console.log('Oops, unable to copy');
