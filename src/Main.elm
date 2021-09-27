@@ -233,41 +233,40 @@ init url key =
         maybeForm =
             UrlParser.parse urlParser url
     in
-    Cmd.none
-        |> Tuple.pair
-            { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
-            , currentApiResponse = RemoteData.NotAsked
-            , results = []
-            , boardSelectModalVisibility = Modal.hidden
-            , rangeSelectionModalVisibility = Modal.hidden
-            , boardSelection = []
-            , rangeSelection = []
-            , rangeSelectionPosition = UTG
-            , alert = Nothing
-            , cardUnderMouse = Nothing
-            , ignoreCardHoverState = False
-            , mouse = Released
-            , handUnderMouse = Nothing
-            , ignoreRangeHoverState = False
-            , navKey = key
-            , rangeDropdownStateUtg = Dropdown.initialState
-            , rangeDropdownStateMp = Dropdown.initialState
-            , rangeDropdownStateCo = Dropdown.initialState
-            , rangeDropdownStateBu = Dropdown.initialState
-            , rangeDropdownStateSb = Dropdown.initialState
-            , rangeDropdownStateBb = Dropdown.initialState
-            , rangeSelectionDropdown = Dropdown.initialState
-            , location = url
-            , rangeSlider = Nothing
-            , popoverStateUtg = initialPopoverStates
-            , popoverStateMp = initialPopoverStates
-            , popoverStateCo = initialPopoverStates
-            , popoverStateBu = initialPopoverStates
-            , popoverStateSb = initialPopoverStates
-            , popoverStateBb = initialPopoverStates
-            , popoverStateBoard = Popover.initialState
-            , popoverStateClearBoard = Popover.initialState
-            }
+    { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
+    , currentApiResponse = RemoteData.NotAsked
+    , results = []
+    , boardSelectModalVisibility = Modal.hidden
+    , rangeSelectionModalVisibility = Modal.hidden
+    , boardSelection = []
+    , rangeSelection = []
+    , rangeSelectionPosition = UTG
+    , alert = Nothing
+    , cardUnderMouse = Nothing
+    , ignoreCardHoverState = False
+    , mouse = Released
+    , handUnderMouse = Nothing
+    , ignoreRangeHoverState = False
+    , navKey = key
+    , rangeDropdownStateUtg = Dropdown.initialState
+    , rangeDropdownStateMp = Dropdown.initialState
+    , rangeDropdownStateCo = Dropdown.initialState
+    , rangeDropdownStateBu = Dropdown.initialState
+    , rangeDropdownStateSb = Dropdown.initialState
+    , rangeDropdownStateBb = Dropdown.initialState
+    , rangeSelectionDropdown = Dropdown.initialState
+    , location = url
+    , rangeSlider = Nothing
+    , popoverStateUtg = initialPopoverStates
+    , popoverStateMp = initialPopoverStates
+    , popoverStateCo = initialPopoverStates
+    , popoverStateBu = initialPopoverStates
+    , popoverStateSb = initialPopoverStates
+    , popoverStateBb = initialPopoverStates
+    , popoverStateBoard = Popover.initialState
+    , popoverStateClearBoard = Popover.initialState
+    }
+        |> sendSimulationRequest
 
 
 type Msg
