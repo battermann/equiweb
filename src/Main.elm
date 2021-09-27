@@ -372,7 +372,12 @@ handleApiResponse model result =
                                 )
                     )
     in
-    ( { model | currentApiResponse = sr, results = model.results ++ (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (\r -> ( initialSharingPopoverStates, model.location, r ))) }, Cmd.none )
+    ( { model
+        | currentApiResponse = sr
+        , results = model.results ++ (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (\r -> ( initialSharingPopoverStates, model.location, r )))
+      }
+    , Cmd.none
+    )
 
 
 sendSimulationRequest : Bool -> Model -> ( Model, Cmd Msg )
@@ -650,10 +655,10 @@ update msg model =
                 maybeText =
                     case sharingType of
                         URL ->
-                            Just (model.location |> Url.toString)
+                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map (\( _, url, _ ) -> Url.toString url)
 
                         Markdown ->
-                            model.results |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.markdown model.location)
+                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.markdown model.location)
             in
             case maybeText of
                 Just text ->
@@ -680,6 +685,7 @@ update msg model =
             ( { model
                 | results =
                     model.results
+                        |> List.reverse
                         |> List.Extra.updateAt copiedMsg.index
                             (\( pos, url, sr ) ->
                                 ( case copiedMsg.sharingType of
@@ -692,6 +698,7 @@ update msg model =
                                 , sr
                                 )
                             )
+                        |> List.reverse
               }
             , Cmd.none
             )
