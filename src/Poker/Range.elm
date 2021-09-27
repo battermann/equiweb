@@ -1,4 +1,4 @@
-module Poker.Range exposing (HandRange, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, rangesToNormalizedString, suitedAces, suitedBroadways, toString)
+module Poker.Range exposing (HandRange, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, suitedAces, suitedBroadways, toNormalizedString, toString)
 
 import List.Extra
 import Maybe.Extra
@@ -176,8 +176,8 @@ combine handRange ranges =
             Hand.magic h ranges
 
 
-rangesToNormalizedString : List HandRange -> String
-rangesToNormalizedString =
+toNormalizedString : List HandRange -> String
+toNormalizedString =
     removeRedundantCombos >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","
 
 

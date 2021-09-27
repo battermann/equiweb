@@ -1,6 +1,7 @@
 module Poker.Card exposing
     ( Card
     , all
+    , boardToString
     , order
     , parser
     , toChar
@@ -204,3 +205,22 @@ order card1 card2 =
 
         orElse ->
             orElse
+
+
+boardToString : List Card -> String
+boardToString cards =
+    case cards of
+        [] ->
+            "Preflop"
+
+        _ :: _ :: _ :: [] ->
+            cards |> List.map toString |> String.concat
+
+        flop1 :: flop2 :: flop3 :: turn :: [] ->
+            [ toString flop1, toString flop2, toString flop3, " ", toString turn ] |> String.concat
+
+        flop1 :: flop2 :: flop3 :: turn :: river :: [] ->
+            [ toString flop1, toString flop2, toString flop3, " ", toString turn, " ", toString river ] |> String.concat
+
+        _ ->
+            ""
