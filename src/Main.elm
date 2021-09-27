@@ -266,7 +266,7 @@ init url key =
     , popoverStateBoard = Popover.initialState
     , popoverStateClearBoard = Popover.initialState
     }
-        |> sendSimulationRequest
+        |> sendSimulationRequest False
 
 
 type Msg
@@ -375,8 +375,8 @@ handleApiResponse model result =
     ( { model | currentApiResponse = sr, results = model.results ++ (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (\r -> ( initialSharingPopoverStates, model.location, r ))) }, Cmd.none )
 
 
-sendSimulationRequest : Model -> ( Model, Cmd Msg )
-sendSimulationRequest model =
+sendSimulationRequest : Bool -> Model -> ( Model, Cmd Msg )
+sendSimulationRequest showAlert model =
     let
         ranges =
             [ model.simulationRequestForm.utg.validated
@@ -393,13 +393,27 @@ sendSimulationRequest model =
     if not <| isFormValid model.simulationRequestForm then
         ( { model
             | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-            , alert = Just "Ranges and/or board not valid"
+            , alert =
+                if showAlert then
+                    Just "Ranges and/or board not valid"
+
+                else
+                    Nothing
           }
         , Cmd.none
         )
 
     else if (ranges |> List.length) < 2 then
-        ( { model | alert = Just "Please enter at least 2 ranges" }, Cmd.none )
+        ( { model
+            | alert =
+                if showAlert then
+                    Just "Please enter at least 2 ranges"
+
+                else
+                    Nothing
+          }
+        , Cmd.none
+        )
 
     else
         ( { model
@@ -459,7 +473,7 @@ update msg model =
             handleApiResponse model result
 
         SendSimulationRequest ->
-            sendSimulationRequest model
+            sendSimulationRequest True model
                 |> updateUrl
 
         RangeInput position str ->
@@ -512,7 +526,7 @@ update msg model =
                         confirmRangeSelection model.rangeSelectionPosition model
 
                     else
-                        sendSimulationRequest model
+                        sendSimulationRequest True model
                             |> updateUrl
 
                 _ ->
