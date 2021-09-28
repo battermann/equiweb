@@ -20,6 +20,7 @@ type alias CopiedToClipboardMsg =
 type SharingType
     = URL
     | Markdown
+    | TwoPlusTwo
 
 
 sharingTypeEncoder : SharingType -> Json.Encode.Value
@@ -31,6 +32,9 @@ sharingTypeEncoder sharingType =
 
             Markdown ->
                 "md"
+
+            TwoPlusTwo ->
+                "two-plus-two"
 
 
 copyToclipboardMsgEncoder : CopyToClipboardMsg -> Json.Encode.Value
@@ -60,6 +64,9 @@ sharingTypeDecoder =
 
                     "md" ->
                         Json.Decode.succeed Markdown
+
+                    "two-plus-two" ->
+                        Json.Decode.succeed TwoPlusTwo
 
                     _ ->
                         Json.Decode.fail "invalid sharing type"

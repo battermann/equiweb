@@ -145,6 +145,8 @@ type alias SharingPopoverStates =
     , shareUrlTooltipText : String
     , shareMd : Popover.State
     , shareMdTooltipText : String
+    , share2plus2 : Popover.State
+    , share2plus2TooltipText : String
     }
 
 
@@ -154,6 +156,8 @@ initialSharingPopoverStates =
     , shareUrlTooltipText = "Copy URL"
     , shareMd = Popover.initialState
     , shareMdTooltipText = "Copy Markdown"
+    , share2plus2 = Popover.initialState
+    , share2plus2TooltipText = "Copy 2+2"
     }
 
 
@@ -648,6 +652,9 @@ update msg model =
 
                         Markdown ->
                             model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.markdown model.location)
+
+                        TwoPlusTwo ->
+                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.twoPlusTwo model.location)
             in
             case maybeText of
                 Just text ->
@@ -683,6 +690,9 @@ update msg model =
 
                                     Markdown ->
                                         { pos | shareMdTooltipText = "Copied! " }
+
+                                    TwoPlusTwo ->
+                                        { pos | share2plus2TooltipText = "Copied! " }
                                 , url
                                 , sr
                                 )
@@ -727,6 +737,9 @@ update msg model =
                             Markdown ->
                                 { pos | shareMd = state }
 
+                            TwoPlusTwo ->
+                                { pos | share2plus2 = state }
+
                     else
                         case sharingType of
                             URL ->
@@ -734,6 +747,9 @@ update msg model =
 
                             Markdown ->
                                 { initialSharingPopoverStates | shareMd = state }
+
+                            TwoPlusTwo ->
+                                { initialSharingPopoverStates | share2plus2 = state }
             in
             ( { model
                 | results =
@@ -1491,6 +1507,18 @@ resultView index popoverStates result =
                     Html.text "Preflop"
                 , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "3px" ]
                     [ Popover.config
+                        (Button.button
+                            [ Button.outlineSecondary
+                            , Button.onClick (CopyToClipboard index TwoPlusTwo)
+                            , Button.attrs (Popover.onHover popoverStates.share2plus2 (PopoverStateSharing index TwoPlusTwo))
+                            ]
+                            [ Html.text "2+2" ]
+                        )
+                        |> Popover.top
+                        |> Popover.content []
+                            [ Html.text popoverStates.share2plus2TooltipText ]
+                        |> Popover.view popoverStates.share2plus2
+                    , Popover.config
                         (Button.button
                             [ Button.outlineSecondary
                             , Button.onClick (CopyToClipboard index Markdown)
