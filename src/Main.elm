@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Bootstrap.Alt.Alert as Alert
+import Bootstrap.Alt.Modal as Modal
 import Bootstrap.Alt.Popover as Popover
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
@@ -12,7 +13,6 @@ import Bootstrap.Form.InputGroup as InputGroup
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
-import Bootstrap.Modal as Modal
 import Bootstrap.Progress as Progress
 import Bootstrap.Spinner as Spinner
 import Bootstrap.Table as Table
@@ -167,7 +167,6 @@ type alias Model =
     , boardSelection : List Card
     , rangeSelection : List HandRange
     , rangeSelectionPosition : Position
-    , alert : List String
     , cardUnderMouse : Maybe Card
     , ignoreCardHoverState : Bool
     , mouse : Mouse
@@ -190,7 +189,6 @@ type alias Model =
     , popoverStateBb : PopoverStates
     , popoverStateBoard : Popover.State
     , popoverStateClearBoard : Popover.State
-    , alertVisibility : Alert.Visibility
     }
 
 
@@ -242,7 +240,6 @@ init url key =
     , boardSelection = []
     , rangeSelection = []
     , rangeSelectionPosition = UTG
-    , alert = []
     , cardUnderMouse = Nothing
     , ignoreCardHoverState = False
     , mouse = Released
@@ -266,14 +263,12 @@ init url key =
     , popoverStateBb = initialPopoverStates
     , popoverStateBoard = Popover.initialState
     , popoverStateClearBoard = Popover.initialState
-    , alertVisibility = Alert.closed
     }
-        |> sendSimulationRequest False
+        |> sendSimulationRequest
 
 
 type Msg
-    = AlertMsg Alert.Visibility
-    | ApiResponseReceived (WebData ApiResponse)
+    = ApiResponseReceived (WebData ApiResponse)
     | BoardInput String
     | CardHover (Maybe Card)
     | ClearBoard
@@ -383,79 +378,54 @@ handleApiResponse model result =
     )
 
 
-sendSimulationRequest : Bool -> Model -> ( Model, Cmd Msg )
-sendSimulationRequest showAlert model =
-    let
-        ranges =
-            [ model.simulationRequestForm.utg.validated
-            , model.simulationRequestForm.mp.validated
-            , model.simulationRequestForm.co.validated
-            , model.simulationRequestForm.bu.validated
-            , model.simulationRequestForm.sb.validated
-            , model.simulationRequestForm.bb.validated
-            ]
-                |> List.map Result.toMaybe
-                |> Maybe.Extra.values
-                |> List.filter (not << List.isEmpty)
-    in
-    case validateForm model.simulationRequestForm of
-        Err errs ->
-            ( { model
-                | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-                , alert = errs
-                , alertVisibility =
-                    if showAlert then
-                        Alert.shown
+rangesFromForm : SimulationRequestForm -> List (List HandRange)
+rangesFromForm simulationRequestForm =
+    [ simulationRequestForm.utg.validated
+    , simulationRequestForm.mp.validated
+    , simulationRequestForm.co.validated
+    , simulationRequestForm.bu.validated
+    , simulationRequestForm.sb.validated
+    , simulationRequestForm.bb.validated
+    ]
+        |> List.map Result.toMaybe
+        |> Maybe.Extra.values
+        |> List.filter (not << List.isEmpty)
 
-                    else
-                        Alert.closed
-              }
-            , Cmd.none
-            )
 
-        Ok _ ->
-            if (ranges |> List.length) < 2 then
-                ( { model
-                    | alert = [ "You must fill in at least 2 ranges." ]
-                    , alertVisibility =
-                        if showAlert then
-                            Alert.shown
+sendSimulationRequest : Model -> ( Model, Cmd Msg )
+sendSimulationRequest model =
+    if validateForm model.simulationRequestForm |> Result.Extra.isErr then
+        ( { model | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm }
+        , Cmd.none
+        )
 
-                        else
-                            Alert.closed
-                  }
-                , Cmd.none
-                )
+    else if (rangesFromForm model.simulationRequestForm |> List.length) < 2 then
+        ( model, Cmd.none )
 
-            else
-                ( { model
-                    | currentApiResponse = RemoteData.Loading
-                    , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-                    , alert = []
-                    , alertVisibility = Alert.closed
-                  }
-                , sendSimulationRequestHttp (model.simulationRequestForm.board.validated |> Result.withDefault []) ranges
-                )
+    else
+        ( { model
+            | currentApiResponse = RemoteData.Loading
+            , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+          }
+        , sendSimulationRequestHttp (model.simulationRequestForm.board.validated |> Result.withDefault []) (rangesFromForm model.simulationRequestForm)
+        )
 
 
 validateForm : SimulationRequestForm -> Result (List String) SimulationRequestForm
 validateForm form =
     Ok (\_ _ _ _ _ _ _ -> form)
-        |> Form.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board." ]) identity)
         |> Form.apply (form.utg.validated |> Result.Extra.mapBoth (always [ "The UTG range is not a valid range." ]) identity)
         |> Form.apply (form.mp.validated |> Result.Extra.mapBoth (always [ "The MP range is not a valid range." ]) identity)
         |> Form.apply (form.co.validated |> Result.Extra.mapBoth (always [ "The CO range is not a valid range." ]) identity)
         |> Form.apply (form.bu.validated |> Result.Extra.mapBoth (always [ "The BU range is not a valid range." ]) identity)
         |> Form.apply (form.sb.validated |> Result.Extra.mapBoth (always [ "The SB range is not a valid range." ]) identity)
         |> Form.apply (form.bb.validated |> Result.Extra.mapBoth (always [ "The BB range is not a valid range." ]) identity)
+        |> Form.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board." ]) identity)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AlertMsg visibility ->
-            ( { model | alertVisibility = visibility }, Cmd.none )
-
         ClickedLink req ->
             case req of
                 Browser.Internal url ->
@@ -481,22 +451,30 @@ update msg model =
                         , handUnderMouse = Nothing
                         , ignoreRangeHoverState = False
                         , location = url
-                        , alertVisibility = Alert.closed
-                        , alert = []
                     }
 
         ApiResponseReceived result ->
             handleApiResponse model result
 
         SendSimulationRequest ->
-            sendSimulationRequest True model
+            sendSimulationRequest model
                 |> updateUrl
 
         RangeInput position str ->
-            ( { model | simulationRequestForm = setRange position str model.simulationRequestForm, currentApiResponse = RemoteData.NotAsked }, Cmd.none )
+            ( { model
+                | simulationRequestForm = setRange position str model.simulationRequestForm
+                , currentApiResponse = RemoteData.NotAsked
+              }
+            , Cmd.none
+            )
 
         BoardInput str ->
-            ( { model | simulationRequestForm = setBoard str model.simulationRequestForm, currentApiResponse = RemoteData.NotAsked }, Cmd.none )
+            ( { model
+                | simulationRequestForm = setBoard str model.simulationRequestForm
+                , currentApiResponse = RemoteData.NotAsked
+              }
+            , Cmd.none
+            )
 
         RewriteRange position ->
             ( { model | simulationRequestForm = rewrite position model.simulationRequestForm }, Cmd.none )
@@ -542,7 +520,7 @@ update msg model =
                         confirmRangeSelection model.rangeSelectionPosition model
 
                     else
-                        sendSimulationRequest True model
+                        sendSimulationRequest model
                             |> updateUrl
 
                 _ ->
@@ -1188,6 +1166,13 @@ inputFormView model =
                                    ]
                             )
                         )
+                        |> InputGroup.attrs
+                            (if model.simulationRequestForm.board.validated |> Result.Extra.isOk then
+                                [ Html.Attributes.class "is-valid" ]
+
+                             else
+                                [ Html.Attributes.class "is-invalid" ]
+                            )
                         |> InputGroup.predecessors
                             [ InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
                                 [ Popover.config
@@ -1222,15 +1207,16 @@ inputFormView model =
                                 ]
                             ]
                         |> InputGroup.view
+                    , Form.invalidFeedback [] [ Html.text "The board is not a valid board" ]
                     ]
                 ]
             ]
         , Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ boardView "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ] ]
-        , Alert.config
-            |> Alert.danger
-            |> Alert.dismissableWithAnimation AlertMsg
-            |> Alert.children (model.alert |> List.map (Html.text >> List.singleton >> Html.div []))
-            |> Alert.view model.alertVisibility
+        , if (rangesFromForm model.simulationRequestForm |> List.length) < 2 then
+            Alert.simpleInfo [ Spacing.mt2 ] [ Html.text "You must fill in at least 2 ranges." ]
+
+          else
+            Html.text ""
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
                 [ Html.div [ Flex.block, Flex.row ]
@@ -1273,6 +1259,13 @@ rangeInputView popoverStates position field result dropdownState ranges =
                                ]
                         )
                     )
+                    |> InputGroup.attrs
+                        [ if field.validated |> Result.Extra.isOk then
+                            Html.Attributes.class "is-valid"
+
+                          else
+                            Html.Attributes.class "is-invalid"
+                        ]
                     |> InputGroup.predecessors
                         [ InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
                             [ Popover.config
@@ -1347,6 +1340,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                     |> InputGroup.view
                  ]
                     ++ numberOfCombosIfNotEmptyView (field.validated |> Result.withDefault [])
+                    ++ [ Form.invalidFeedback [] [ Html.text ("The " ++ Position.toString position ++ " is not a valid range") ] ]
                 )
             ]
         , Form.col [ Col.sm2 ]
@@ -1424,6 +1418,7 @@ boardSelectionModalView model =
     Modal.config CloseBoardSelectModal
         |> Modal.large
         |> Modal.attrs [ Html.Attributes.class "modal-fullscreen-lg-down" ]
+        |> Modal.h4 [] [ Html.text "Board" ]
         |> Modal.body []
             [ Html.div [ Flex.block, Flex.col, Flex.justifyCenter, Flex.alignItemsCenter ]
                 (Suit.all
@@ -1780,5 +1775,4 @@ subscriptions model =
         , Dropdown.subscriptions model.rangeDropdownStateBb (RangeDropdownMsg BB)
         , Ports.notifyCopyToClipboard (Decode.decodeValue Ports.copiedToClipboardMsgDecoder >> NotifyCopyToClipboard)
         , Dropdown.subscriptions model.rangeSelectionDropdown RangeSelectionDropdownMsg
-        , Alert.subscriptions model.alertVisibility AlertMsg
         ]
