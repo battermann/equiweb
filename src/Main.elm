@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Bootstrap.Alert as Alert
+import Bootstrap.Alt.Alert as Alert
 import Bootstrap.Alt.Popover as Popover
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
@@ -167,7 +167,7 @@ type alias Model =
     , boardSelection : List Card
     , rangeSelection : List HandRange
     , rangeSelectionPosition : Position
-    , alert : Maybe String
+    , alert : List String
     , cardUnderMouse : Maybe Card
     , ignoreCardHoverState : Bool
     , mouse : Mouse
@@ -190,6 +190,7 @@ type alias Model =
     , popoverStateBb : PopoverStates
     , popoverStateBoard : Popover.State
     , popoverStateClearBoard : Popover.State
+    , alertVisibility : Alert.Visibility
     }
 
 
@@ -241,7 +242,7 @@ init url key =
     , boardSelection = []
     , rangeSelection = []
     , rangeSelectionPosition = UTG
-    , alert = Nothing
+    , alert = []
     , cardUnderMouse = Nothing
     , ignoreCardHoverState = False
     , mouse = Released
@@ -265,12 +266,14 @@ init url key =
     , popoverStateBb = initialPopoverStates
     , popoverStateBoard = Popover.initialState
     , popoverStateClearBoard = Popover.initialState
+    , alertVisibility = Alert.closed
     }
         |> sendSimulationRequest False
 
 
 type Msg
-    = ApiResponseReceived (WebData ApiResponse)
+    = AlertMsg Alert.Visibility
+    | ApiResponseReceived (WebData ApiResponse)
     | BoardInput String
     | CardHover (Maybe Card)
     | ClearBoard
@@ -395,58 +398,64 @@ sendSimulationRequest showAlert model =
                 |> Maybe.Extra.values
                 |> List.filter (not << List.isEmpty)
     in
-    if not <| isFormValid model.simulationRequestForm then
-        ( { model
-            | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-            , alert =
-                if showAlert then
-                    Just "Ranges and/or board not valid"
+    case validateForm model.simulationRequestForm of
+        Err errs ->
+            ( { model
+                | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+                , alert = errs
+                , alertVisibility =
+                    if showAlert then
+                        Alert.shown
 
-                else
-                    Nothing
-          }
-        , Cmd.none
-        )
+                    else
+                        Alert.closed
+              }
+            , Cmd.none
+            )
 
-    else if (ranges |> List.length) < 2 then
-        ( { model
-            | alert =
-                if showAlert then
-                    Just "Please enter at least 2 ranges"
+        Ok _ ->
+            if (ranges |> List.length) < 2 then
+                ( { model
+                    | alert = [ "You must fill in at least 2 ranges." ]
+                    , alertVisibility =
+                        if showAlert then
+                            Alert.shown
 
-                else
-                    Nothing
-          }
-        , Cmd.none
-        )
+                        else
+                            Alert.closed
+                  }
+                , Cmd.none
+                )
 
-    else
-        ( { model
-            | currentApiResponse = RemoteData.Loading
-            , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
-            , alert = Nothing
-          }
-        , sendSimulationRequestHttp (model.simulationRequestForm.board.validated |> Result.withDefault []) ranges
-        )
+            else
+                ( { model
+                    | currentApiResponse = RemoteData.Loading
+                    , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+                    , alert = []
+                    , alertVisibility = Alert.closed
+                  }
+                , sendSimulationRequestHttp (model.simulationRequestForm.board.validated |> Result.withDefault []) ranges
+                )
 
 
-isFormValid : SimulationRequestForm -> Bool
-isFormValid form =
-    (Ok (\_ _ _ _ _ _ _ -> True)
-        |> Form.apply form.board.validated
-        |> Form.apply form.utg.validated
-        |> Form.apply form.mp.validated
-        |> Form.apply form.co.validated
-        |> Form.apply form.bu.validated
-        |> Form.apply form.sb.validated
-        |> Form.apply form.bb.validated
-    )
-        |> Result.Extra.isOk
+validateForm : SimulationRequestForm -> Result (List String) SimulationRequestForm
+validateForm form =
+    Ok (\_ _ _ _ _ _ _ -> form)
+        |> Form.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board." ]) identity)
+        |> Form.apply (form.utg.validated |> Result.Extra.mapBoth (always [ "The UTG range is not a valid range." ]) identity)
+        |> Form.apply (form.mp.validated |> Result.Extra.mapBoth (always [ "The MP range is not a valid range." ]) identity)
+        |> Form.apply (form.co.validated |> Result.Extra.mapBoth (always [ "The CO range is not a valid range." ]) identity)
+        |> Form.apply (form.bu.validated |> Result.Extra.mapBoth (always [ "The BU range is not a valid range." ]) identity)
+        |> Form.apply (form.sb.validated |> Result.Extra.mapBoth (always [ "The SB range is not a valid range." ]) identity)
+        |> Form.apply (form.bb.validated |> Result.Extra.mapBoth (always [ "The BB range is not a valid range." ]) identity)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        AlertMsg visibility ->
+            ( { model | alertVisibility = visibility }, Cmd.none )
+
         ClickedLink req ->
             case req of
                 Browser.Internal url ->
@@ -472,6 +481,8 @@ update msg model =
                         , handUnderMouse = Nothing
                         , ignoreRangeHoverState = False
                         , location = url
+                        , alertVisibility = Alert.closed
+                        , alert = []
                     }
 
         ApiResponseReceived result ->
@@ -848,20 +859,29 @@ toSimulationRequestForm :
     -> Maybe String
     -> SimulationRequestForm
 toSimulationRequestForm maybeUtg maybeMp maybeCo maybeBu maybeSb maybeBb maybeBaord =
+    let
+        set f maybe form =
+            case maybe of
+                Just v ->
+                    f v form
+
+                Nothing ->
+                    form
+    in
     initialForm
-        |> setRange UTG (maybeUtg |> Maybe.withDefault "")
+        |> set (setRange UTG) maybeUtg
         |> rewrite UTG
-        |> setRange MP (maybeMp |> Maybe.withDefault "")
+        |> set (setRange MP) maybeMp
         |> rewrite MP
-        |> setRange CO (maybeCo |> Maybe.withDefault "")
+        |> set (setRange CO) maybeCo
         |> rewrite CO
-        |> setRange BU (maybeBu |> Maybe.withDefault "")
+        |> set (setRange BU) maybeBu
         |> rewrite BU
-        |> setRange SB (maybeSb |> Maybe.withDefault "")
+        |> set (setRange SB) maybeSb
         |> rewrite SB
-        |> setRange BB (maybeBb |> Maybe.withDefault "")
+        |> set (setRange BB) maybeBb
         |> rewrite BB
-        |> setBoard (maybeBaord |> Maybe.withDefault "")
+        |> set setBoard maybeBaord
         |> rewriteBoard
 
 
@@ -881,7 +901,7 @@ urlParser =
 
 updateUrl : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 updateUrl ( model, cmd ) =
-    if model.simulationRequestForm |> isFormValid then
+    if model.simulationRequestForm |> validateForm |> Result.Extra.isOk then
         Cmd.batch
             [ cmd
             , Navigation.pushUrl model.navKey
@@ -1030,17 +1050,10 @@ calculatorView model =
                                     loadingView
 
                                 RemoteData.Failure _ ->
-                                    Html.div []
-                                        [ Alert.simpleDanger [] [ Html.text "Opps, something went wrong. Please try again." ]
-                                        , inputFormView model
-                                        ]
+                                    inputFormView model
 
                                 _ ->
-                                    Html.div []
-                                        ((model.alert |> Maybe.Extra.toList |> List.map (\msg -> Alert.simpleDanger [] [ Html.text msg ]))
-                                            ++ [ inputFormView model
-                                               ]
-                                        )
+                                    inputFormView model
                         ]
                  )
                     :: (model.results |> List.reverse |> List.indexedMap (\index ( popoverStates, _, res ) -> resultView index popoverStates res))
@@ -1212,10 +1225,12 @@ inputFormView model =
                     ]
                 ]
             ]
-        , Form.row [ Row.attrs [ Spacing.mt2 ] ]
-            [ Form.col []
-                [ boardView "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ]
-            ]
+        , Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ boardView "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ] ]
+        , Alert.config
+            |> Alert.danger
+            |> Alert.dismissableWithAnimation AlertMsg
+            |> Alert.children (model.alert |> List.map (Html.text >> List.singleton >> Html.div []))
+            |> Alert.view model.alertVisibility
         , Form.row [ Row.attrs [ Spacing.mt2 ] ]
             [ Form.col []
                 [ Html.div [ Flex.block, Flex.row ]
@@ -1765,4 +1780,5 @@ subscriptions model =
         , Dropdown.subscriptions model.rangeDropdownStateBb (RangeDropdownMsg BB)
         , Ports.notifyCopyToClipboard (Decode.decodeValue Ports.copiedToClipboardMsgDecoder >> NotifyCopyToClipboard)
         , Dropdown.subscriptions model.rangeSelectionDropdown RangeSelectionDropdownMsg
+        , Alert.subscriptions model.alertVisibility AlertMsg
         ]
