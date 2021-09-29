@@ -17,7 +17,6 @@ serviceWorker.unregister();
 app.ports.copyToClipboard.subscribe(function (x) {
   var textArea = document.body.appendChild(document.createElement("TEXTAREA"));
   textArea.innerHTML = x.text;
-  textArea.focus();
   textArea.select();
   try {
     document.execCommand('copy');

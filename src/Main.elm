@@ -147,6 +147,8 @@ type alias SharingPopoverStates =
     , shareMdTooltipText : String
     , share2plus2 : Popover.State
     , share2plus2TooltipText : String
+    , sharePs : Popover.State
+    , sharePsTooltipText : String
     }
 
 
@@ -157,7 +159,9 @@ initialSharingPopoverStates =
     , shareMd = Popover.initialState
     , shareMdTooltipText = "Copy Markdown"
     , share2plus2 = Popover.initialState
-    , share2plus2TooltipText = "Copy 2+2"
+    , share2plus2TooltipText = "Copy twoplustwo.com"
+    , sharePs = Popover.initialState
+    , sharePsTooltipText = "Copy PokerStrategy.com"
     }
 
 
@@ -655,6 +659,9 @@ update msg model =
 
                         TwoPlusTwo ->
                             model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.twoPlusTwo model.location)
+
+                        PokerStrategy ->
+                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.pokerStrategy model.location)
             in
             case maybeText of
                 Just text ->
@@ -693,6 +700,9 @@ update msg model =
 
                                     TwoPlusTwo ->
                                         { pos | share2plus2TooltipText = "Copied! " }
+
+                                    PokerStrategy ->
+                                        { pos | sharePsTooltipText = "Copied! " }
                                 , url
                                 , sr
                                 )
@@ -740,6 +750,9 @@ update msg model =
                             TwoPlusTwo ->
                                 { pos | share2plus2 = state }
 
+                            PokerStrategy ->
+                                { pos | sharePs = state }
+
                     else
                         case sharingType of
                             URL ->
@@ -750,6 +763,9 @@ update msg model =
 
                             TwoPlusTwo ->
                                 { initialSharingPopoverStates | share2plus2 = state }
+
+                            PokerStrategy ->
+                                { initialSharingPopoverStates | sharePs = state }
             in
             ( { model
                 | results =
@@ -1505,45 +1521,60 @@ resultView index popoverStates result =
 
                   else
                     Html.text "Preflop"
-                , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "3px" ]
-                    [ Popover.config
-                        (Button.button
-                            [ Button.outlineSecondary
-                            , Button.onClick (CopyToClipboard index TwoPlusTwo)
-                            , Button.attrs (Popover.onHover popoverStates.share2plus2 (PopoverStateSharing index TwoPlusTwo))
-                            ]
-                            [ Html.text "2+2" ]
-                        )
-                        |> Popover.top
-                        |> Popover.content []
-                            [ Html.text popoverStates.share2plus2TooltipText ]
-                        |> Popover.view popoverStates.share2plus2
-                    , Popover.config
-                        (Button.button
-                            [ Button.outlineSecondary
-                            , Button.onClick (CopyToClipboard index Markdown)
-                            , Button.attrs (Popover.onHover popoverStates.shareMd (PopoverStateSharing index Markdown))
-                            ]
-                            [ Html.i [ Html.Attributes.class "fab fa-markdown" ] []
-                            ]
-                        )
-                        |> Popover.top
-                        |> Popover.content []
-                            [ Html.text popoverStates.shareMdTooltipText ]
-                        |> Popover.view popoverStates.shareMd
-                    , Popover.config
-                        (Button.button
-                            [ Button.outlineSecondary
-                            , Button.onClick (CopyToClipboard index URL)
-                            , Button.attrs (Popover.onHover popoverStates.shareUrl (PopoverStateSharing index URL))
-                            ]
-                            [ Html.i [ Html.Attributes.class "fas fa-share-alt" ] []
-                            ]
-                        )
-                        |> Popover.top
-                        |> Popover.content []
-                            [ Html.text popoverStates.shareUrlTooltipText ]
-                        |> Popover.view popoverStates.shareUrl
+                , Html.div []
+                    [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "3px" ]
+                        [ Popover.config
+                            (Button.button
+                                [ Button.outlineSecondary
+                                , Button.onClick (CopyToClipboard index PokerStrategy)
+                                , Button.attrs (Popover.onHover popoverStates.sharePs (PopoverStateSharing index PokerStrategy))
+                                ]
+                                [ Html.img [ Html.Attributes.src "images/pokerStrategy.svg", Html.Attributes.height 23 ] []
+                                ]
+                            )
+                            |> Popover.top
+                            |> Popover.content []
+                                [ Html.text popoverStates.sharePsTooltipText ]
+                            |> Popover.view popoverStates.sharePs
+                        , Popover.config
+                            (Button.button
+                                [ Button.outlineSecondary
+                                , Button.onClick (CopyToClipboard index TwoPlusTwo)
+                                , Button.attrs (Popover.onHover popoverStates.share2plus2 (PopoverStateSharing index TwoPlusTwo))
+                                ]
+                                [ Html.text "2+2" ]
+                            )
+                            |> Popover.top
+                            |> Popover.content []
+                                [ Html.text popoverStates.share2plus2TooltipText ]
+                            |> Popover.view popoverStates.share2plus2
+                        , Popover.config
+                            (Button.button
+                                [ Button.outlineSecondary
+                                , Button.onClick (CopyToClipboard index Markdown)
+                                , Button.attrs (Popover.onHover popoverStates.shareMd (PopoverStateSharing index Markdown))
+                                ]
+                                [ Html.i [ Html.Attributes.class "fab fa-markdown" ] []
+                                ]
+                            )
+                            |> Popover.top
+                            |> Popover.content []
+                                [ Html.text popoverStates.shareMdTooltipText ]
+                            |> Popover.view popoverStates.shareMd
+                        , Popover.config
+                            (Button.button
+                                [ Button.outlineSecondary
+                                , Button.onClick (CopyToClipboard index URL)
+                                , Button.attrs (Popover.onHover popoverStates.shareUrl (PopoverStateSharing index URL))
+                                ]
+                                [ Html.i [ Html.Attributes.class "fas fa-link" ] []
+                                ]
+                            )
+                            |> Popover.top
+                            |> Popover.content []
+                                [ Html.text popoverStates.shareUrlTooltipText ]
+                            |> Popover.view popoverStates.shareUrl
+                        ]
                     ]
                 ]
             ]

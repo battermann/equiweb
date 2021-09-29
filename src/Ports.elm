@@ -21,6 +21,7 @@ type SharingType
     = URL
     | Markdown
     | TwoPlusTwo
+    | PokerStrategy
 
 
 sharingTypeEncoder : SharingType -> Json.Encode.Value
@@ -35,6 +36,9 @@ sharingTypeEncoder sharingType =
 
             TwoPlusTwo ->
                 "two-plus-two"
+
+            PokerStrategy ->
+                "poker-strategy"
 
 
 copyToclipboardMsgEncoder : CopyToClipboardMsg -> Json.Encode.Value
@@ -67,6 +71,9 @@ sharingTypeDecoder =
 
                     "two-plus-two" ->
                         Json.Decode.succeed TwoPlusTwo
+
+                    "poker-strategy" ->
+                        Json.Decode.succeed PokerStrategy
 
                     _ ->
                         Json.Decode.fail "invalid sharing type"

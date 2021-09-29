@@ -1,4 +1,4 @@
-module Sharing exposing (markdown, twoPlusTwo)
+module Sharing exposing (markdown, pokerStrategy, twoPlusTwo)
 
 import Maybe.Extra
 import Poker.Card as Card exposing (Card)
@@ -116,4 +116,25 @@ Powered by [URL="{{URL}}"]Equiweb - 6 Max Hold'em Equity Simulations[/URL]
 """
         |> String.replace "{{BOARD}}" (result.board |> altBoard)
         |> String.replace "{{RESULT_LINES}}" (result |> lines |> List.map twoPlusTwoLine |> String.join "\n")
+        |> String.replace "{{URL}}" (url |> Url.toString)
+
+
+pokerStrategyLine : ( Position, ResultLine ) -> String
+pokerStrategyLine ( position, resultLine ) =
+    """[b]{{POSITION}}[/b]{{EQUITY}}%\u{00A0}{ {{RANGE}} }"""
+        |> String.replace "{{POSITION}}" (position |> Position.toString |> String.padRight 3 '\u{00A0}')
+        |> String.replace "{{RANGE}}" (resultLine.range |> Range.toNormalizedString)
+        |> String.replace "{{EQUITY}}" ((resultLine.equity * 100) |> Round.round 2 |> String.padLeft 7 '\u{00A0}')
+
+
+pokerStrategy : Url -> SimulationResult -> String
+pokerStrategy url result =
+    """[FONT=courier new][SIZE=12]
+[b]Board: [/b]{{BOARD}}
+[b]Pos\u{00A0}Equity\u{00A0}\u{00A0}Range[/b]
+{{RESULT_LINES}}
+Powered by [url="{{URL}}"]Equiweb - 6 Max Hold'em Equity Simulations[/url]
+[/SIZE][/FONT]"""
+        |> String.replace "{{BOARD}}" (altBoard result.board |> String.replace " " "\u{00A0}")
+        |> String.replace "{{RESULT_LINES}}" (result |> lines |> List.map pokerStrategyLine |> String.join "\n")
         |> String.replace "{{URL}}" (url |> Url.toString)
