@@ -1058,6 +1058,7 @@ sendSimulationRequestHttp board ranges =
                 [ "simulation" ]
                 ([ Url.Builder.string "board" (board |> List.map Card.toString |> String.concat)
                  , Url.Builder.string "stdev_target" "0.001"
+                 , Url.Builder.string "num_iterations" "50"
                  ]
                     ++ (ranges
                             |> List.indexedMap
