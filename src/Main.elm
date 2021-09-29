@@ -1583,7 +1583,7 @@ resultView index popoverStates result =
                                 , Button.onClick (CopyToClipboard index PokerStrategy)
                                 , Button.attrs (Popover.onHover popoverStates.sharePs (PopoverStateSharing index PokerStrategy))
                                 ]
-                                [ Html.img [ Html.Attributes.src "images/pokerStrategy.svg", Html.Attributes.height 23 ] []
+                                [ Html.img [ Html.Attributes.src "images/pokerstrategy.svg", Html.Attributes.height 23 ] []
                                 ]
                             )
                             |> Popover.top
