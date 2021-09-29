@@ -1356,7 +1356,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                     |> InputGroup.view
                  ]
                     ++ numberOfCombosIfNotEmptyView (field.validated |> Result.withDefault [])
-                    ++ [ Form.invalidFeedback [] [ Html.text ("The " ++ Position.toString position ++ " is not a valid range") ] ]
+                    ++ [ Form.invalidFeedback [] [ Html.text ("The " ++ Position.toString position ++ " range is not a valid range") ] ]
                 )
             ]
         , Form.col [ Col.sm2 ]
