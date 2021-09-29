@@ -1727,14 +1727,7 @@ rangeSelectionModalView model =
                         ]
                     ]
                 , Grid.col []
-                    [ Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
-                        [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "POCKET PAIRS" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "SUITED ACES" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "SUITED BROADWAYS" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "OFFSUIT ACES" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
-                        ]
-                    , Html.div [ Size.w100 ]
+                    [ Html.div [ Size.w100 ]
                         [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px" ]
                             [ Html.div [] [ Html.text ("PFR: " ++ Round.round 2 (Slider.fetchLowValue model.slider) ++ "%") ]
                             , Html.div [] [ Html.text ("VPIP: " ++ Round.round 2 (Slider.fetchHighValue model.slider) ++ "%") ]
@@ -1743,7 +1736,7 @@ rangeSelectionModalView model =
                         ]
                     , Dropdown.dropdown
                         model.rangeSelectionDropdown
-                        { options = [ Dropdown.attrs [] ]
+                        { options = [ Dropdown.attrs [ Spacing.mb2 ] ]
                         , toggleMsg = RangeSelectionDropdownMsg
                         , toggleButton =
                             Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Preset Ranges" ]
@@ -1755,6 +1748,13 @@ rangeSelectionModalView model =
                                         Dropdown.buttonItem [ Html.Events.onClick (SelectRange r.range) ] [ Html.text r.label ]
                                     )
                         }
+                    , Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
+                        [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "POCKET PAIRS" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "SUITED ACES" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "SUITED BROADWAYS" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "OFFSUIT ACES" ]
+                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
+                        ]
                     ]
                 ]
             ]
