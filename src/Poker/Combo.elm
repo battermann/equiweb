@@ -1,4 +1,4 @@
-module Poker.Combo exposing (Combo, all, combo, order, parser, toString, total)
+module Poker.Combo exposing (Combo, all, combo, isOffsuit, isPair, isSuited, order, parser, toString, total)
 
 import List.Extra
 import Maybe.Extra
@@ -81,3 +81,26 @@ order (Combo h1 l1) (Combo h2 l2) =
 total : Int
 total =
     1326
+
+
+isPair : Combo -> Bool
+isPair (Combo card1 card2) =
+    if card1.rank == card2.rank then
+        True
+
+    else
+        False
+
+
+isSuited : Combo -> Bool
+isSuited (Combo card1 card2) =
+    if card1.suit == card2.suit then
+        True
+
+    else
+        False
+
+
+isOffsuit : Combo -> Bool
+isOffsuit c =
+    not (isPair c) && not (isSuited c)
