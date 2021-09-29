@@ -462,7 +462,6 @@ update msg model =
                 |> Tuple.pair
                     { model
                         | simulationRequestForm = UrlParser.parse urlParser url |> Maybe.withDefault initialForm
-                        , currentApiResponse = RemoteData.NotAsked
                         , boardSelectModalVisibility = Modal.hidden
                         , rangeSelectionModalVisibility = Modal.hidden
                         , boardSelection = []
@@ -1058,7 +1057,7 @@ sendSimulationRequestHttp board ranges =
                 [ "simulation" ]
                 ([ Url.Builder.string "board" (board |> List.map Card.toString |> String.concat)
                  , Url.Builder.string "stdev_target" "0.001"
-                 , Url.Builder.string "num_iterations" "50"
+                 , Url.Builder.string "num_iterations" "500"
                  ]
                     ++ (ranges
                             |> List.indexedMap
@@ -1089,7 +1088,7 @@ view model =
 
 loadingView : Html Msg
 loadingView =
-    Html.div []
+    Html.div [ Html.Attributes.class "loading-view" ]
         [ Html.div [ Flex.block, Flex.row, Flex.alignItemsCenter, Flex.justifyAround ] [ Spinner.spinner [ Spinner.large ] [] ]
         ]
 
@@ -1112,7 +1111,7 @@ calculatorView model =
                         [ Block.custom <|
                             case model.currentApiResponse of
                                 RemoteData.Loading ->
-                                    loadingView
+                                    Html.div [] [ loadingView, inputFormView model ]
 
                                 RemoteData.Failure _ ->
                                     inputFormView model
