@@ -1,4 +1,4 @@
-module Poker.Range exposing (HandRange, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, suitedAces, suitedBroadways, toNormalizedString, toString)
+module Poker.Range exposing (HandRange, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, range, suitedAces, suitedBroadways, toNormalizedString, toString)
 
 import List.Extra
 import Maybe.Extra
@@ -98,13 +98,13 @@ percentageParser =
 
 
 removeRedundantCombos : List HandRange -> List HandRange
-removeRedundantCombos range =
+removeRedundantCombos r =
     let
         uniqueHands =
-            range |> List.map hand |> Maybe.Extra.values |> List.Extra.unique
+            r |> List.map hand |> Maybe.Extra.values |> List.Extra.unique
 
         uniqueCombos =
-            range |> List.map combo |> Maybe.Extra.values |> List.Extra.unique
+            r |> List.map combo |> Maybe.Extra.values |> List.Extra.unique
     in
     (uniqueHands |> List.map Hand) ++ (uniqueCombos |> List.filter (\c -> uniqueHands |> List.any (\h -> Hand.combos h |> List.member c) |> not) |> List.map Combo)
 
@@ -203,16 +203,20 @@ percentage handRanges =
 
 best : Float -> List HandRange
 best p =
-    Hand.allRanked
-        |> List.foldl
-            (\h hr ->
-                if (numberOfCombos hr |> toFloat) / toFloat Combo.total < p then
-                    Hand h :: hr
+    Hand.allWithAccumulatedNumberOfCombosOrderedByRank
+        |> List.filterMap
+            (\( h, _, accP ) ->
+                if p >= accP then
+                    Just (Hand h)
 
                 else
-                    hr
+                    Nothing
             )
-            []
+
+
+range : Float -> Float -> List HandRange
+range vpip pfr =
+    best vpip |> List.filter (\hr -> best pfr |> List.member hr |> not)
 
 
 pairs : List HandRange

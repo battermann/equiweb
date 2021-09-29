@@ -22,6 +22,7 @@ import Bootstrap.Utilities.Spacing as Spacing
 import Browser exposing (UrlRequest)
 import Browser.Events
 import Browser.Navigation as Navigation
+import DoubleSlider as Slider
 import Form
 import Html exposing (Html)
 import Html.Attributes
@@ -159,9 +160,9 @@ initialSharingPopoverStates =
     , shareMd = Popover.initialState
     , shareMdTooltipText = "Copy Markdown"
     , share2plus2 = Popover.initialState
-    , share2plus2TooltipText = "Copy twoplustwo.com"
+    , share2plus2TooltipText = "Copy Forum Format (2+2)"
     , sharePs = Popover.initialState
-    , sharePsTooltipText = "Copy PokerStrategy.com"
+    , sharePsTooltipText = "Copy Forum Format (PokerStrategy)"
     }
 
 
@@ -188,7 +189,6 @@ type alias Model =
     , rangeDropdownStateBb : Dropdown.State
     , rangeSelectionDropdown : Dropdown.State
     , location : Url
-    , rangeSlider : Maybe Int
     , popoverStateUtg : PopoverStates
     , popoverStateMp : PopoverStates
     , popoverStateCo : PopoverStates
@@ -197,6 +197,7 @@ type alias Model =
     , popoverStateBb : PopoverStates
     , popoverStateBoard : Popover.State
     , popoverStateClearBoard : Popover.State
+    , slider : Slider.DoubleSlider Msg
     }
 
 
@@ -234,6 +235,19 @@ main =
         }
 
 
+initialRangeSlider : Slider.DoubleSlider Msg
+initialRangeSlider =
+    Slider.init
+        { min = 0
+        , max = 100
+        , lowValue = 0
+        , highValue = 0
+        , step = 0.1
+        , onLowChange = DoubleSliderLowChange
+        , onHighChange = DoubleSliderHighChange
+        }
+
+
 init : Url -> Navigation.Key -> ( Model, Cmd Msg )
 init url key =
     let
@@ -262,7 +276,6 @@ init url key =
     , rangeDropdownStateBb = Dropdown.initialState
     , rangeSelectionDropdown = Dropdown.initialState
     , location = url
-    , rangeSlider = Nothing
     , popoverStateUtg = initialPopoverStates
     , popoverStateMp = initialPopoverStates
     , popoverStateCo = initialPopoverStates
@@ -271,6 +284,7 @@ init url key =
     , popoverStateBb = initialPopoverStates
     , popoverStateBoard = Popover.initialState
     , popoverStateClearBoard = Popover.initialState
+    , slider = initialRangeSlider
     }
         |> sendSimulationRequest
 
@@ -287,6 +301,8 @@ type Msg
     | ConfirmBoardSelection
     | ConfirmRangeSelection
     | CopyToClipboard Int SharingType
+    | DoubleSliderLowChange Float
+    | DoubleSliderHighChange Float
     | HandHover (Maybe Hand)
     | KeyDown RawKey
     | MouseDown
@@ -302,7 +318,6 @@ type Msg
     | RangeDropdownMsg Position Dropdown.State
     | RangeInput Position String
     | RangeSelectionDropdownMsg Dropdown.State
-    | RangeSlider String
     | RemoveBoard
     | RemoveRange Position
     | RewriteRange Position
@@ -566,7 +581,7 @@ update msg model =
                 | rangeSelectionModalVisibility = Modal.shown
                 , rangeSelection = range
                 , rangeSelectionPosition = position
-                , rangeSlider = Nothing
+                , slider = initialRangeSlider
               }
             , Cmd.none
             )
@@ -589,7 +604,7 @@ update msg model =
             ( { model | mouse = Released }, Cmd.none )
 
         ClearRange ->
-            ( { model | rangeSelection = [], rangeSlider = Nothing }, Cmd.none )
+            ( { model | rangeSelection = [], slider = initialRangeSlider }, Cmd.none )
 
         HandHover (Just hand) ->
             if model.mouse == Pressed then
@@ -602,19 +617,44 @@ update msg model =
             ( { model | handUnderMouse = Nothing, ignoreRangeHoverState = False }, Cmd.none )
 
         SelectPairs ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.pairs |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
+            ( { model
+                | rangeSelection = model.rangeSelection ++ Range.pairs |> List.Extra.unique
+                , slider = initialRangeSlider
+              }
+            , Cmd.none
+            )
 
         SelectSuitedAces ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedAces |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
+            ( { model
+                | rangeSelection = model.rangeSelection ++ Range.suitedAces |> List.Extra.unique
+                , slider = initialRangeSlider
+              }
+            , Cmd.none
+            )
 
         SelectSuitedBroadways ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.suitedBroadways |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
+            ( { model
+                | rangeSelection = model.rangeSelection ++ Range.suitedBroadways |> List.Extra.unique
+                , slider = initialRangeSlider
+              }
+            , Cmd.none
+            )
 
         SelectOffsuitAces ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitAces |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
+            ( { model
+                | rangeSelection = model.rangeSelection ++ Range.offsuitAces |> List.Extra.unique
+                , slider = initialRangeSlider
+              }
+            , Cmd.none
+            )
 
         SelectOffsuitBroadways ->
-            ( { model | rangeSelection = model.rangeSelection ++ Range.offsuitBroadways |> List.Extra.unique, rangeSlider = Nothing }, Cmd.none )
+            ( { model
+                | rangeSelection = model.rangeSelection ++ Range.offsuitBroadways |> List.Extra.unique
+                , slider = initialRangeSlider
+              }
+            , Cmd.none
+            )
 
         RangeDropdownMsg position state ->
             case position of
@@ -669,14 +709,6 @@ update msg model =
 
                 Nothing ->
                     ( model, Cmd.none )
-
-        RangeSlider value ->
-            ( { model
-                | rangeSlider = String.toInt value
-                , rangeSelection = String.toFloat value |> Maybe.map (\f -> Range.best (f / 100)) |> Maybe.withDefault model.rangeSelection
-              }
-            , Cmd.none
-            )
 
         RemoveRange position ->
             ( { model | simulationRequestForm = setRange position "" model.simulationRequestForm }, Cmd.none )
@@ -768,9 +800,31 @@ update msg model =
                                 { initialSharingPopoverStates | sharePs = state }
             in
             ( { model
-                | results =
-                    model.results
-                        |> List.Extra.updateAt ((model.results |> List.length) - index - 1) (\( pos, url, rs ) -> ( resestStateIfNotActive pos state, url, rs ))
+                | results = model.results |> List.Extra.updateAt ((model.results |> List.length) - index - 1) (\( pos, url, rs ) -> ( resestStateIfNotActive pos state, url, rs ))
+              }
+            , Cmd.none
+            )
+
+        DoubleSliderLowChange str ->
+            let
+                newSlider =
+                    Slider.updateLowValue str model.slider
+            in
+            ( { model
+                | slider = newSlider
+                , rangeSelection = Range.range (Slider.fetchHighValue newSlider / 100) (Slider.fetchLowValue newSlider / 100)
+              }
+            , Cmd.none
+            )
+
+        DoubleSliderHighChange str ->
+            let
+                newSlider =
+                    Slider.updateHighValue str model.slider
+            in
+            ( { model
+                | slider = newSlider
+                , rangeSelection = Range.range (Slider.fetchHighValue newSlider / 100) (Slider.fetchLowValue newSlider / 100)
               }
             , Cmd.none
             )
@@ -804,14 +858,14 @@ toggleHandSelection handRange model =
         { model
             | rangeSelection = model.rangeSelection |> List.filter ((/=) handRange)
             , ignoreRangeHoverState = True
-            , rangeSlider = Nothing
+            , slider = initialRangeSlider
         }
 
     else
         { model
             | rangeSelection = model.rangeSelection ++ [ handRange ]
             , ignoreRangeHoverState = True
-            , rangeSlider = Nothing
+            , slider = initialRangeSlider
         }
 
 
@@ -1681,17 +1735,11 @@ rangeSelectionModalView model =
                         , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
                         ]
                     , Html.div [ Size.w100 ]
-                        [ Html.text "% Range"
-                        , Html.input
-                            [ Html.Attributes.type_ "range"
-                            , Html.Attributes.min "0"
-                            , Html.Attributes.max "100"
-                            , Html.Attributes.value (model.rangeSlider |> Maybe.map String.fromInt |> Maybe.withDefault "0")
-                            , Size.w100
-                            , Html.Events.onInput RangeSlider
-                            , Spacing.mb2
+                        [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px" ]
+                            [ Html.div [] [ Html.text ("PFR: " ++ Round.round 2 (Slider.fetchLowValue model.slider) ++ "%") ]
+                            , Html.div [] [ Html.text ("VPIP: " ++ Round.round 2 (Slider.fetchHighValue model.slider) ++ "%") ]
                             ]
-                            []
+                        , Html.div [] [ Slider.view model.slider ]
                         ]
                     , Dropdown.dropdown
                         model.rangeSelectionDropdown
