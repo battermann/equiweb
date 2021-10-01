@@ -1,4 +1,31 @@
-module Poker.Hand exposing (CombosOfHand(..), Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combine, combos, combosOfHand, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toRangeNotation, toString)
+module Poker.Hand exposing
+    ( CombosOfHand(..)
+    , Hand
+    , allOrderedByRank
+    , allWithAccumulatedNumberOfCombosOrderedByRank
+    , combine
+    , combos
+    , combosOfHand
+    , fold
+    , grid
+    , highCard
+    , isOffsuit
+    , isPair
+    , isSuited
+    , lowCard
+    , offsuit
+    , offsuitAces
+    , offsuitBroadways
+    , order
+    , pair
+    , pairs
+    , parser
+    , suited
+    , suitedAces
+    , suitedBroadways
+    , toRangeNotation
+    , toString
+    )
 
 import List
 import List.Extra
@@ -41,11 +68,9 @@ combos hand =
 grid : List (List Hand)
 grid =
     Rank.all
-        |> List.reverse
         |> List.map
             (\r1 ->
                 Rank.all
-                    |> List.reverse
                     |> List.map
                         (\r2 ->
                             if r1 == r2 then

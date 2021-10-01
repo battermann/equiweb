@@ -78,32 +78,32 @@ setRange : Position -> String -> SimulationRequestForm -> SimulationRequestForm
 setRange position range form =
     case position of
         UTG ->
-            { form | utg = form.utg |> Form.setValue HandOrCombo.parseAndNormalize range }
+            { form | utg = form.utg |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
 
         MP ->
-            { form | mp = form.mp |> Form.setValue HandOrCombo.parseAndNormalize range }
+            { form | mp = form.mp |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
 
         CO ->
-            { form | co = form.co |> Form.setValue HandOrCombo.parseAndNormalize range }
+            { form | co = form.co |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
 
         BU ->
-            { form | bu = form.bu |> Form.setValue HandOrCombo.parseAndNormalize range }
+            { form | bu = form.bu |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
 
         SB ->
-            { form | sb = form.sb |> Form.setValue HandOrCombo.parseAndNormalize range }
+            { form | sb = form.sb |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
 
         BB ->
-            { form | bb = form.bb |> Form.setValue HandOrCombo.parseAndNormalize range }
+            { form | bb = form.bb |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
 
 
 initialForm : SimulationRequestForm
 initialForm =
-    { utg = { name = "UTG", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
-    , mp = { name = "MP", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
-    , co = { name = "CO", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
-    , bu = { name = "BU", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
-    , sb = { name = "SB", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
-    , bb = { name = "BB", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
+    { utg = { name = "UTG", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
+    , mp = { name = "MP", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
+    , co = { name = "CO", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
+    , bu = { name = "BU", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
+    , sb = { name = "SB", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
+    , bb = { name = "BB", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
     , board = { name = "Board", value = "", validated = Ok [], edited = False }
     }
 
@@ -747,7 +747,7 @@ update msg model =
 
         SelectRange range ->
             ( { model
-                | rangeSelection = range |> HandOrCombo.parseAndNormalize |> Result.withDefault [] |> List.concatMap HandOrCombo.combos
+                | rangeSelection = range |> HandOrCombo.parseAsCononicalHandsOrCombos |> Result.withDefault [] |> List.concatMap HandOrCombo.combos
               }
             , Cmd.none
             )
@@ -1517,7 +1517,6 @@ boardSelectionModalView model =
                                 , Flex.wrap
                                 ]
                                 (Rank.all
-                                    |> List.reverse
                                     |> List.map
                                         (\rank ->
                                             Card rank suit |> (\card -> cardView (Just <| ToggleBoardSelection card) (cardSelectState card model) "pointer" "6vw" card)
