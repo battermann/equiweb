@@ -528,7 +528,7 @@ fold onPair onSuited onOffsuit hand =
 
 
 type CombosOfHand
-    = All
+    = All Int
     | None
     | Some Int
 
@@ -542,7 +542,7 @@ combosOfHand hand cs =
                     None
 
                 6 ->
-                    All
+                    All 6
 
                 n ->
                     Some n
@@ -553,7 +553,7 @@ combosOfHand hand cs =
                     None
 
                 4 ->
-                    All
+                    All 4
 
                 n ->
                     Some n
@@ -564,7 +564,7 @@ combosOfHand hand cs =
                     None
 
                 12 ->
-                    All
+                    All 12
 
                 n ->
                     Some n

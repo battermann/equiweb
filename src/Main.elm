@@ -860,7 +860,7 @@ updatePopoverState f position model =
 toggleHandSelection : Hand -> Model -> Model
 toggleHandSelection hand model =
     case model.rangeSelection |> Hand.combosOfHand hand of
-        Hand.All ->
+        Hand.All _ ->
             { model
                 | rangeSelection = model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not)
                 , ignoreRangeHoverState = True
@@ -1784,8 +1784,8 @@ rangeSelectState hand model =
 
             else
                 case model.rangeSelection |> Hand.combosOfHand hand of
-                    Hand.All ->
-                        RangeCellSelectState.Selected
+                    Hand.All n ->
+                        RangeCellSelectState.Selected n
 
                     Hand.None ->
                         RangeCellSelectState.NotSelected
@@ -1795,8 +1795,8 @@ rangeSelectState hand model =
 
         Nothing ->
             case model.rangeSelection |> Hand.combosOfHand hand of
-                Hand.All ->
-                    RangeCellSelectState.Selected
+                Hand.All n ->
+                    RangeCellSelectState.Selected n
 
                 Hand.None ->
                     RangeCellSelectState.NotSelected
@@ -1808,26 +1808,26 @@ rangeSelectState hand model =
 cellView : RangeCellSelectState -> String -> Hand -> Html Msg
 cellView cs size hand =
     let
-        ( fontColor, color, opacity ) =
+        ( ( fontColor, color, opacity ), maybeNum ) =
             case cs of
-                RangeCellSelectState.Selected ->
-                    ( "white", "#9b5378", "1" )
+                RangeCellSelectState.Selected num ->
+                    ( ( "white", "#9b5378", "1" ), Just num )
 
                 RangeCellSelectState.NotSelected ->
                     if hand |> Hand.isOffsuit then
-                        ( "#aaaaaa", "#eeeeee", "1" )
+                        ( ( "#aaaaaa", "#eeeeee", "1" ), Nothing )
 
                     else if hand |> Hand.isSuited then
-                        ( "#aaaaaa", "#dddddd", "1" )
+                        ( ( "#aaaaaa", "#dddddd", "1" ), Nothing )
 
                     else
-                        ( "#aaaaaa", "#cccccc", "1" )
+                        ( ( "#aaaaaa", "#cccccc", "1" ), Nothing )
 
                 RangeCellSelectState.MouseOver ->
-                    ( "white", "#9b5378", "0.5" )
+                    ( ( "white", "#9b5378", "0.5" ), Nothing )
 
-                RangeCellSelectState.PartiallySelected _ ->
-                    ( "white", "#db9713", "1" )
+                RangeCellSelectState.PartiallySelected num ->
+                    ( ( "white", "#db9713", "1" ), Just num )
     in
     Html.div
         [ Html.Attributes.style "width" size
@@ -1848,7 +1848,7 @@ cellView cs size hand =
             , Svg.Attributes.height "100%"
             , Svg.Attributes.viewBox "0 0 100 100"
             ]
-            [ Svg.rect
+            ([ Svg.rect
                 [ Svg.Attributes.x "0"
                 , Svg.Attributes.y "0"
                 , Svg.Attributes.width "100"
@@ -1858,7 +1858,7 @@ cellView cs size hand =
                 , Svg.Attributes.fill color
                 ]
                 []
-            , Svg.text_
+             , Svg.text_
                 [ Svg.Attributes.x "50"
                 , Svg.Attributes.y "50"
                 , Svg.Attributes.fill fontColor
@@ -1867,7 +1867,24 @@ cellView cs size hand =
                 , Svg.Attributes.dominantBaseline "middle"
                 ]
                 [ Svg.text (hand |> Hand.toString) ]
-            ]
+             ]
+                ++ (case maybeNum of
+                        Just num ->
+                            [ Svg.text_
+                                [ Svg.Attributes.x "78"
+                                , Svg.Attributes.y "20"
+                                , Svg.Attributes.fill "#dddddd"
+                                , Svg.Attributes.fontSize "27"
+                                , Svg.Attributes.textAnchor "middle"
+                                , Svg.Attributes.dominantBaseline "middle"
+                                ]
+                                [ Svg.text (num |> String.fromInt) ]
+                            ]
+
+                        Nothing ->
+                            []
+                   )
+            )
         ]
 
 
