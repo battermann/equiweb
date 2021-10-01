@@ -1,6 +1,5 @@
 module Poker.Range exposing (HandRange, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, range, suitedAces, suitedBroadways, toNormalizedString, toString)
 
-import List.Extra
 import Maybe.Extra
 import Parser exposing ((|.), Parser)
 import Poker.Combo as Combo exposing (Combo)
@@ -32,26 +31,6 @@ toString handRange =
 
         Combo c ->
             Combo.toString c
-
-
-hand : HandRange -> Maybe Hand
-hand handRange =
-    case handRange of
-        Hand h ->
-            Just h
-
-        Combo _ ->
-            Nothing
-
-
-combo : HandRange -> Maybe Combo
-combo handRange =
-    case handRange of
-        Hand _ ->
-            Nothing
-
-        Combo c ->
-            Just c
 
 
 isHand : HandRange -> Bool
@@ -97,18 +76,6 @@ percentageParser =
         |> Parser.map best
 
 
-removeRedundantCombos : List HandRange -> List HandRange
-removeRedundantCombos r =
-    let
-        uniqueHands =
-            r |> List.map hand |> Maybe.Extra.values |> List.Extra.unique
-
-        uniqueCombos =
-            r |> List.map combo |> Maybe.Extra.values |> List.Extra.unique
-    in
-    (uniqueHands |> List.map Hand) ++ (uniqueCombos |> List.filter (\c -> uniqueHands |> List.any (\h -> Hand.combos h |> List.member c) |> not) |> List.map Combo)
-
-
 parseAndNormalize : String -> Result (List String) (List HandRange)
 parseAndNormalize rangeString =
     rangeString
@@ -119,7 +86,7 @@ parseAndNormalize rangeString =
                 |> List.map (String.replace " " "")
                 |> List.map (Parser.run parser)
                 |> Result.Extra.combine
-                |> Result.map (List.concat >> removeRedundantCombos)
+                |> Result.map (List.concat >> toCannonicalHandRanges)
                 |> Result.map (List.sortWith order >> List.reverse)
             )
         |> Result.Extra.mapBoth (always [ "Range is not valid" ]) identity
@@ -178,7 +145,7 @@ combine handRange ranges =
 
 toNormalizedString : List HandRange -> String
 toNormalizedString =
-    removeRedundantCombos >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","
+    toCannonicalHandRanges >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","
 
 
 combos : HandRange -> List Combo
@@ -242,3 +209,50 @@ suitedBroadways =
 offsuitBroadways : List HandRange
 offsuitBroadways =
     Hand.offsuitBroadways |> List.map Hand
+
+
+toCannonicalHandRanges : List HandRange -> List HandRange
+toCannonicalHandRanges =
+    List.concatMap combos >> combosToHandRange
+
+
+combosToHandRange : List Combo -> List HandRange
+combosToHandRange cs =
+    let
+        onPair r =
+            let
+                ps =
+                    cs |> Combo.getPairs r
+            in
+            if List.length ps == 6 then
+                [ Hand (Hand.pair r) ]
+
+            else
+                ps |> List.map Combo
+
+        onSuited r1 r2 =
+            let
+                suitedCombos =
+                    cs |> Combo.getSuited r1 r2
+            in
+            if List.length suitedCombos == 4 then
+                Hand.suited r1 r2 |> Maybe.Extra.unwrap [] (Hand >> List.singleton)
+
+            else
+                suitedCombos |> List.map Combo
+
+        onOffsuit r1 r2 =
+            let
+                offsuitCombos =
+                    cs |> Combo.getOffsuit r1 r2
+            in
+            if List.length offsuitCombos == 12 then
+                Hand.offsuit r1 r2 |> Maybe.Extra.unwrap [] (Hand >> List.singleton)
+
+            else
+                offsuitCombos |> List.map Combo
+    in
+    Hand.grid
+        |> List.concat
+        |> List.concatMap (Hand.fold onPair onSuited onOffsuit)
+        |> List.sortWith order

@@ -1,4 +1,4 @@
-module Poker.Hand exposing (Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toHandRanges, toString)
+module Poker.Hand exposing (Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combos, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toHandRanges, toString)
 
 import List
 import List.Extra
@@ -512,6 +512,19 @@ offsuitBroadways =
 allOrderedByRank : List Hand
 allOrderedByRank =
     allWithAccumulatedNumberOfCombosOrderedByRank |> List.map (\( h, _, _ ) -> h)
+
+
+fold : (Rank -> a) -> (Rank -> Rank -> a) -> (Rank -> Rank -> a) -> Hand -> a
+fold onPair onSuited onOffsuit hand =
+    case hand of
+        Pair r ->
+            onPair r
+
+        Suited h l ->
+            onSuited h l
+
+        Offsuit h l ->
+            onOffsuit h l
 
 
 allWithAccumulatedNumberOfCombosOrderedByRank : List ( Hand, Int, Float )
