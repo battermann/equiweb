@@ -1,4 +1,4 @@
-module Poker.Data exposing (positionalRanges)
+module Poker.Ranges exposing (positionalRanges)
 
 import Poker.Position exposing (Position(..))
 

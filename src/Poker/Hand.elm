@@ -1,4 +1,4 @@
-module Poker.Hand exposing (Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combine, combos, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toRangeNotation, toString)
+module Poker.Hand exposing (CombosOfHand(..), Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combine, combos, combosOfHand, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toRangeNotation, toString)
 
 import List
 import List.Extra
@@ -525,6 +525,49 @@ fold onPair onSuited onOffsuit hand =
 
         Offsuit h l ->
             onOffsuit h l
+
+
+type CombosOfHand
+    = All
+    | None
+    | Some Int
+
+
+combosOfHand : Hand -> List Combo -> CombosOfHand
+combosOfHand hand cs =
+    case hand of
+        Pair r ->
+            case cs |> Combo.getPairs r |> List.length of
+                0 ->
+                    None
+
+                6 ->
+                    All
+
+                n ->
+                    Some n
+
+        Suited h l ->
+            case cs |> Combo.getSuited h l |> List.length of
+                0 ->
+                    None
+
+                4 ->
+                    All
+
+                n ->
+                    Some n
+
+        Offsuit h l ->
+            case cs |> Combo.getOffsuit h l |> List.length of
+                0 ->
+                    None
+
+                12 ->
+                    All
+
+                n ->
+                    Some n
 
 
 allWithAccumulatedNumberOfCombosOrderedByRank : List ( Hand, Int, Float )
