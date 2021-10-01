@@ -38,8 +38,8 @@ import Poker.Card as Card exposing (Card)
 import Poker.Combo as Combo
 import Poker.Data as Data
 import Poker.Hand as Hand exposing (Hand)
+import Poker.HandOrCombo as Range exposing (HandOrCombo)
 import Poker.Position as Position exposing (Position(..))
-import Poker.Range as Range exposing (HandRange)
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
 import Ports exposing (CopiedToClipboardMsg, SharingType(..))
@@ -57,12 +57,12 @@ import Url.Parser.Query as Query
 
 
 type alias SimulationRequestForm =
-    { utg : Form.Field (List HandRange)
-    , mp : Form.Field (List HandRange)
-    , co : Form.Field (List HandRange)
-    , bu : Form.Field (List HandRange)
-    , sb : Form.Field (List HandRange)
-    , bb : Form.Field (List HandRange)
+    { utg : Form.Field (List HandOrCombo)
+    , mp : Form.Field (List HandOrCombo)
+    , co : Form.Field (List HandOrCombo)
+    , bu : Form.Field (List HandOrCombo)
+    , sb : Form.Field (List HandOrCombo)
+    , bb : Form.Field (List HandOrCombo)
     , board : Form.Field (List Card)
     }
 
@@ -174,7 +174,7 @@ type alias Model =
     , boardSelectModalVisibility : Modal.Visibility
     , rangeSelectionModalVisibility : Modal.Visibility
     , boardSelection : List Card
-    , rangeSelection : List HandRange
+    , rangeSelection : List HandOrCombo
     , rangeSelectionPosition : Position
     , cardUnderMouse : Maybe Card
     , ignoreCardHoverState : Bool
@@ -401,7 +401,7 @@ handleApiResponse model result =
     )
 
 
-rangesFromForm : SimulationRequestForm -> List (List HandRange)
+rangesFromForm : SimulationRequestForm -> List (List HandOrCombo)
 rangesFromForm simulationRequestForm =
     [ simulationRequestForm.utg.validated
     , simulationRequestForm.mp.validated
@@ -851,18 +851,18 @@ updatePopoverState f position model =
             { model | popoverStateBb = f model.popoverStateBb }
 
 
-toggleHandSelection : HandRange -> Model -> Model
-toggleHandSelection handRange model =
-    if model.rangeSelection |> List.member handRange then
+toggleHandSelection : HandOrCombo -> Model -> Model
+toggleHandSelection handOrCombo model =
+    if model.rangeSelection |> List.member handOrCombo then
         { model
-            | rangeSelection = model.rangeSelection |> List.filter ((/=) handRange)
+            | rangeSelection = model.rangeSelection |> List.filter ((/=) handOrCombo)
             , ignoreRangeHoverState = True
             , slider = initialRangeSlider
         }
 
     else
         { model
-            | rangeSelection = model.rangeSelection ++ [ handRange ]
+            | rangeSelection = model.rangeSelection ++ [ handOrCombo ]
             , ignoreRangeHoverState = True
             , slider = initialRangeSlider
         }
@@ -998,7 +998,7 @@ boardQueryParameter board =
             [ Url.Builder.string "board" (cards |> List.map Card.toString |> String.concat |> String.toLower) ]
 
 
-rangeQueryParameter : Position -> Form.Field (List HandRange) -> List Url.Builder.QueryParameter
+rangeQueryParameter : Position -> Form.Field (List HandOrCombo) -> List Url.Builder.QueryParameter
 rangeQueryParameter position field =
     case field.validated of
         Err _ ->
@@ -1048,7 +1048,7 @@ simulationResponseDecoder =
         |> P.required "equity_player_6" (Decode.nullable Decode.float)
 
 
-sendSimulationRequestHttp : List Card -> List (List HandRange) -> Cmd Msg
+sendSimulationRequestHttp : List Card -> List (List HandOrCombo) -> Cmd Msg
 sendSimulationRequestHttp board ranges =
     Http.get
         { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
@@ -1134,11 +1134,6 @@ equityValueView result =
 
         Just value ->
             Input.value (Round.round 2 (100 * value.equity) ++ " %")
-
-
-handRangePlaceholder : String
-handRangePlaceholder =
-    ""
 
 
 validationFeedbackOutline : Form.Field a -> List (Input.Option msg)
@@ -1324,7 +1319,7 @@ inputFormView model =
         ]
 
 
-rangeInputView : PopoverStates -> Position -> Form.Field (List HandRange) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
+rangeInputView : PopoverStates -> Position -> Form.Field (List HandOrCombo) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
 rangeInputView popoverStates position field result dropdownState ranges =
     Form.row []
         [ Form.col []
@@ -1339,8 +1334,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                           else
                             validationFeedbackOutline field
                          )
-                            ++ [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                               , Input.value field.value
+                            ++ [ Input.value field.value
                                , Input.onInput (RangeInput position)
                                ]
                         )
@@ -1438,7 +1432,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
         ]
 
 
-numberOfCombosIfNotEmptyView : List HandRange -> List (Html Msg)
+numberOfCombosIfNotEmptyView : List HandOrCombo -> List (Html Msg)
 numberOfCombosIfNotEmptyView ranges =
     if ranges |> List.isEmpty |> not then
         [ numberOfCombosView ranges ]
@@ -1447,7 +1441,7 @@ numberOfCombosIfNotEmptyView ranges =
         []
 
 
-numberOfCombosView : List HandRange -> Html Msg
+numberOfCombosView : List HandOrCombo -> Html Msg
 numberOfCombosView ranges =
     Form.help []
         [ Html.div [ Spacing.mt1 ]
@@ -1461,7 +1455,7 @@ numberOfCombosView ranges =
         ]
 
 
-rewritable : Form.Field (List HandRange) -> Bool
+rewritable : Form.Field (List HandOrCombo) -> Bool
 rewritable field =
     field.value
         /= (field.validated |> Result.withDefault [] |> Range.toNormalizedString)

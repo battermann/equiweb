@@ -1,10 +1,10 @@
-module Poker.RangeTests exposing (..)
+module Poker.HandOrComboTests exposing (..)
 
 import Expect
 import Fuzz exposing (..)
 import List.Extra
 import Poker.Combo as Combo exposing (Combo)
-import Poker.Range as Range
+import Poker.HandOrCombo as Range
 import Random.List
 import Shrink
 import Test exposing (..)

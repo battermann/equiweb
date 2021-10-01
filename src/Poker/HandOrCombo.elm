@@ -1,4 +1,4 @@
-module Poker.Range exposing (HandRange, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, range, suitedAces, suitedBroadways, toNormalizedString, toString)
+module Poker.HandOrCombo exposing (HandOrCombo, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, range, suitedAces, suitedBroadways, toNormalizedString, toString)
 
 import Maybe.Extra
 import Parser exposing ((|.), Parser)
@@ -8,24 +8,24 @@ import Poker.Ranges as Ranges exposing (Ranges(..))
 import Result.Extra
 
 
-type HandRange
+type HandOrCombo
     = Hand Hand
     | Combo Combo
 
 
-fromHand : Hand -> HandRange
+fromHand : Hand -> HandOrCombo
 fromHand =
     Hand
 
 
-fromCombo : Combo -> HandRange
+fromCombo : Combo -> HandOrCombo
 fromCombo =
     Combo
 
 
-toString : HandRange -> String
-toString handRange =
-    case handRange of
+toString : HandOrCombo -> String
+toString handOrCombo =
+    case handOrCombo of
         Hand h ->
             Hand.toString h
 
@@ -33,7 +33,7 @@ toString handRange =
             Combo.toString c
 
 
-isHand : HandRange -> Bool
+isHand : HandOrCombo -> Bool
 isHand h =
     case h of
         Hand _ ->
@@ -43,7 +43,7 @@ isHand h =
             False
 
 
-isCombo : HandRange -> Bool
+isCombo : HandOrCombo -> Bool
 isCombo h =
     case h of
         Hand _ ->
@@ -53,7 +53,7 @@ isCombo h =
             True
 
 
-parser : Parser (List HandRange)
+parser : Parser (List HandOrCombo)
 parser =
     Parser.oneOf
         [ Parser.backtrackable (Hand.parser |> Parser.map (List.map Hand))
@@ -62,7 +62,7 @@ parser =
         ]
 
 
-percentageParser : Parser (List HandRange)
+percentageParser : Parser (List HandOrCombo)
 percentageParser =
     Parser.oneOf
         [ Parser.int
@@ -76,7 +76,7 @@ percentageParser =
         |> Parser.map best
 
 
-parseAndNormalize : String -> Result (List String) (List HandRange)
+parseAndNormalize : String -> Result (List String) (List HandOrCombo)
 parseAndNormalize rangeString =
     rangeString
         |> Parser.run percentageParser
@@ -86,13 +86,13 @@ parseAndNormalize rangeString =
                 |> List.map (String.replace " " "")
                 |> List.map (Parser.run parser)
                 |> Result.Extra.combine
-                |> Result.map (List.concat >> toCannonicalHandRanges)
+                |> Result.map (List.concat >> toCannonicalHandOrCombos)
                 |> Result.map (List.sortWith order >> List.reverse)
             )
         |> Result.Extra.mapBoth (always [ "Range is not valid" ]) identity
 
 
-order : HandRange -> HandRange -> Order
+order : HandOrCombo -> HandOrCombo -> Order
 order hr1 hr2 =
     case ( hr1, hr2 ) of
         ( Hand h1, Hand h2 ) ->
@@ -108,34 +108,34 @@ order hr1 hr2 =
             Combo.order c1 c2
 
 
-magic : List HandRange -> List Ranges
+magic : List HandOrCombo -> List Ranges
 magic =
     List.foldl fun []
 
 
-fun : HandRange -> List Ranges -> List Ranges
+fun : HandOrCombo -> List Ranges -> List Ranges
 fun hr ranges =
     case ranges of
         h :: t ->
             combine hr h ++ t
 
         [] ->
-            [ handRangeToRanges hr ]
+            [ handOrComboToRanges hr ]
 
 
-handRangeToRanges : HandRange -> Ranges
-handRangeToRanges handRange =
-    case handRange of
+handOrComboToRanges : HandOrCombo -> Ranges
+handOrComboToRanges handOrCombo =
+    case handOrCombo of
         Combo c ->
             SingleCombo c
 
         Hand h ->
-            Hand.toHandRanges h
+            Hand.toHandOrCombos h
 
 
-combine : HandRange -> Ranges -> List Ranges
-combine handRange ranges =
-    case handRange of
+combine : HandOrCombo -> Ranges -> List Ranges
+combine handOrCombo ranges =
+    case handOrCombo of
         Combo c ->
             [ SingleCombo c, ranges ]
 
@@ -143,14 +143,14 @@ combine handRange ranges =
             Hand.magic h ranges
 
 
-toNormalizedString : List HandRange -> String
+toNormalizedString : List HandOrCombo -> String
 toNormalizedString =
-    toCannonicalHandRanges >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","
+    toCannonicalHandOrCombos >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","
 
 
-combos : HandRange -> List Combo
-combos handRange =
-    case handRange of
+combos : HandOrCombo -> List Combo
+combos handOrCombo =
+    case handOrCombo of
         Combo c ->
             [ c ]
 
@@ -158,17 +158,17 @@ combos handRange =
             Hand.combos h
 
 
-numberOfCombos : List HandRange -> Int
+numberOfCombos : List HandOrCombo -> Int
 numberOfCombos =
     List.map (combos >> List.length) >> List.sum
 
 
-percentage : List HandRange -> Float
-percentage handRanges =
-    (numberOfCombos handRanges |> toFloat) / toFloat Combo.total
+percentage : List HandOrCombo -> Float
+percentage handOrCombos =
+    (numberOfCombos handOrCombos |> toFloat) / toFloat Combo.total
 
 
-best : Float -> List HandRange
+best : Float -> List HandOrCombo
 best p =
     Hand.allWithAccumulatedNumberOfCombosOrderedByRank
         |> List.filterMap
@@ -181,43 +181,43 @@ best p =
             )
 
 
-range : Float -> Float -> List HandRange
+range : Float -> Float -> List HandOrCombo
 range vpip pfr =
     best vpip |> List.filter (\hr -> best pfr |> List.member hr |> not)
 
 
-pairs : List HandRange
+pairs : List HandOrCombo
 pairs =
     Hand.pairs |> List.map Hand
 
 
-suitedAces : List HandRange
+suitedAces : List HandOrCombo
 suitedAces =
     Hand.suitedAces |> List.map Hand
 
 
-offsuitAces : List HandRange
+offsuitAces : List HandOrCombo
 offsuitAces =
     Hand.offsuitAces |> List.map Hand
 
 
-suitedBroadways : List HandRange
+suitedBroadways : List HandOrCombo
 suitedBroadways =
     Hand.suitedBroadways |> List.map Hand
 
 
-offsuitBroadways : List HandRange
+offsuitBroadways : List HandOrCombo
 offsuitBroadways =
     Hand.offsuitBroadways |> List.map Hand
 
 
-toCannonicalHandRanges : List HandRange -> List HandRange
-toCannonicalHandRanges =
-    List.concatMap combos >> combosToHandRange
+toCannonicalHandOrCombos : List HandOrCombo -> List HandOrCombo
+toCannonicalHandOrCombos =
+    List.concatMap combos >> combosToHandOrCombo
 
 
-combosToHandRange : List Combo -> List HandRange
-combosToHandRange cs =
+combosToHandOrCombo : List Combo -> List HandOrCombo
+combosToHandOrCombo cs =
     let
         onPair r =
             let

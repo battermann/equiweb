@@ -1,11 +1,11 @@
 module SimulationResult exposing (ResultLine, SimulationResult)
 
 import Poker.Card exposing (Card)
-import Poker.Range exposing (HandRange)
+import Poker.HandOrCombo exposing (HandOrCombo)
 
 
 type alias ResultLine =
-    { range : List HandRange
+    { range : List HandOrCombo
     , equity : Float
     }
 

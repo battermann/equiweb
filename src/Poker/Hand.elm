@@ -1,4 +1,4 @@
-module Poker.Hand exposing (Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combos, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toHandRanges, toString)
+module Poker.Hand exposing (Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combos, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toHandOrCombos, toString)
 
 import List
 import List.Extra
@@ -399,8 +399,8 @@ order lhs rhs =
                 EQ
 
 
-toHandRanges : Hand -> Ranges
-toHandRanges hand =
+toHandOrCombos : Hand -> Ranges
+toHandOrCombos hand =
     case hand of
         Pair Rank.Ace ->
             PairPlus Rank.Ace
@@ -431,51 +431,51 @@ magic hand ranges =
                 [ PairPlus low ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toHandOrCombos hand, ranges ]
 
         ( Pair lowest, PairRange high low ) ->
             if Rank.isConnected low lowest then
                 [ PairRange high lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toHandOrCombos hand, ranges ]
 
         ( Pair _, _ ) ->
-            [ toHandRanges hand, ranges ]
+            [ toHandOrCombos hand, ranges ]
 
         ( Suited high lowest, SuitedPlus otherHigh low ) ->
             if high == otherHigh && Rank.isConnected low lowest then
                 [ SuitedPlus high lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toHandOrCombos hand, ranges ]
 
         ( Suited high lowest, SuitedRange otherHigh lowTo lowFrom ) ->
             if high == otherHigh && Rank.isConnected lowFrom lowest then
                 [ SuitedRange high lowTo lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toHandOrCombos hand, ranges ]
 
         ( Suited _ _, _ ) ->
-            [ toHandRanges hand, ranges ]
+            [ toHandOrCombos hand, ranges ]
 
         ( Offsuit high lowest, OffsuitPlus otherHigh low ) ->
             if high == otherHigh && Rank.isConnected low lowest then
                 [ OffsuitPlus high lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toHandOrCombos hand, ranges ]
 
         ( Offsuit high lowest, OffsuitRange otherHigh lowTo lowFrom ) ->
             if high == otherHigh && Rank.isConnected lowFrom lowest then
                 [ OffsuitRange high lowTo lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toHandOrCombos hand, ranges ]
 
         ( Offsuit _ _, _ ) ->
-            [ toHandRanges hand, ranges ]
+            [ toHandOrCombos hand, ranges ]
 
 
 pairs : List Hand
