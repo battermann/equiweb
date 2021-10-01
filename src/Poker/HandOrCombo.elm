@@ -4,7 +4,7 @@ import Maybe.Extra
 import Parser exposing ((|.), Parser)
 import Poker.Combo as Combo exposing (Combo)
 import Poker.Hand as Hand exposing (Hand)
-import Poker.Ranges as Ranges exposing (Ranges(..))
+import Poker.RangeNotation as RangeNotation exposing (RangeNotation(..))
 import Result.Extra
 
 
@@ -108,44 +108,44 @@ order hr1 hr2 =
             Combo.order c1 c2
 
 
-magic : List HandOrCombo -> List Ranges
-magic =
-    List.foldl fun []
+toRangeNotation : List HandOrCombo -> List RangeNotation
+toRangeNotation =
+    List.sortWith order >> List.reverse >> List.foldl combineHandOrCombo []
 
 
-fun : HandOrCombo -> List Ranges -> List Ranges
-fun hr ranges =
+combineHandOrCombo : HandOrCombo -> List RangeNotation -> List RangeNotation
+combineHandOrCombo hr ranges =
     case ranges of
         h :: t ->
             combine hr h ++ t
 
         [] ->
-            [ handOrComboToRanges hr ]
+            [ handOrComboToRangeNotation hr ]
 
 
-handOrComboToRanges : HandOrCombo -> Ranges
-handOrComboToRanges handOrCombo =
+handOrComboToRangeNotation : HandOrCombo -> RangeNotation
+handOrComboToRangeNotation handOrCombo =
     case handOrCombo of
         Combo c ->
             SingleCombo c
 
         Hand h ->
-            Hand.toHandOrCombos h
+            Hand.toRangeNotation h
 
 
-combine : HandOrCombo -> Ranges -> List Ranges
+combine : HandOrCombo -> RangeNotation -> List RangeNotation
 combine handOrCombo ranges =
     case handOrCombo of
         Combo c ->
             [ SingleCombo c, ranges ]
 
         Hand h ->
-            Hand.magic h ranges
+            Hand.combine h ranges
 
 
 toNormalizedString : List HandOrCombo -> String
 toNormalizedString =
-    toCannonicalHandOrCombos >> List.sortWith order >> List.reverse >> magic >> List.reverse >> List.map Ranges.toString >> String.join ","
+    toCannonicalHandOrCombos >> toRangeNotation >> List.reverse >> List.map RangeNotation.toString >> String.join ","
 
 
 combos : HandOrCombo -> List Combo

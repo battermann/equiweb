@@ -1,10 +1,10 @@
-module Poker.Ranges exposing (Ranges(..), toString)
+module Poker.RangeNotation exposing (RangeNotation(..), toString)
 
 import Poker.Combo as Combo exposing (Combo)
 import Poker.Rank as Rank exposing (Rank)
 
 
-type Ranges
+type RangeNotation
     = PairPlus Rank
     | PairRange Rank Rank
     | SuitedPlus Rank Rank
@@ -14,7 +14,7 @@ type Ranges
     | SingleCombo Combo
 
 
-toString : Ranges -> String
+toString : RangeNotation -> String
 toString ranges =
     case ranges of
         PairPlus Rank.Ace ->

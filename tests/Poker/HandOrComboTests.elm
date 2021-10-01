@@ -14,7 +14,7 @@ import Test.Table as Table
 rangeTests : Test
 rangeTests =
     describe "range tests"
-        [ normalizedRangesParsedAndNormalizedShouldBeSameAsOriginal
+        [ normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginal
         , fuzz combosFuzzer "to normalized string and parsed to combos should be the same" <|
             \combos ->
                 Expect.equal
@@ -30,7 +30,7 @@ rangeTests =
         ]
 
 
-normalizedRangesParsedAndNormalizedShouldBeSameAsOriginal =
+normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginal =
     let
         pairs =
             [ "AA"
