@@ -1,4 +1,18 @@
-module Poker.Combo exposing (Combo, all, combo, getOffsuit, getPairs, getSuited, isOffsuit, isPair, isSuited, order, parser, toString, total)
+module Poker.Combo exposing
+    ( Combo
+    , all
+    , combo
+    , getOffsuit
+    , getPairs
+    , getSuited
+    , isOffsuit
+    , isPair
+    , isSuited
+    , order
+    , parser
+    , toString
+    , total
+    )
 
 import List.Extra
 import Maybe.Extra
@@ -70,12 +84,66 @@ parser =
 
 order : Combo -> Combo -> Order
 order (Combo h1 l1) (Combo h2 l2) =
-    case Card.order h1 h2 of
-        EQ ->
-            Card.order l1 l2
+    if isPair (Combo h1 l1) && isPair (Combo h2 l2) then
+        case Rank.order h1.rank h2.rank of
+            EQ ->
+                case Suit.order h1.suit h2.suit of
+                    EQ ->
+                        Suit.order l1.suit l2.suit
 
-        orElse ->
-            orElse
+                    x ->
+                        x
+
+            x ->
+                x
+
+    else if isPair (Combo h1 l1) then
+        GT
+
+    else if isPair (Combo h2 l2) then
+        LT
+
+    else if isSuited (Combo h1 l1) && isSuited (Combo h2 l2) then
+        case Rank.order h1.rank h2.rank of
+            EQ ->
+                case Rank.order l1.rank l2.rank of
+                    EQ ->
+                        case Suit.order h1.suit h2.suit of
+                            EQ ->
+                                Suit.order l1.suit l2.suit
+
+                            x ->
+                                x
+
+                    x ->
+                        x
+
+            x ->
+                x
+
+    else if isSuited (Combo h1 l1) then
+        GT
+
+    else if isSuited (Combo h2 l2) then
+        LT
+
+    else
+        case Rank.order h1.rank h2.rank of
+            EQ ->
+                case Rank.order l1.rank l2.rank of
+                    EQ ->
+                        case Suit.order h1.suit h2.suit of
+                            EQ ->
+                                Suit.order l1.suit l2.suit
+
+                            x ->
+                                x
+
+                    x ->
+                        x
+
+            x ->
+                x
 
 
 total : Int

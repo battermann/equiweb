@@ -3,8 +3,12 @@ module Poker.HandOrComboTests exposing (..)
 import Expect
 import Fuzz exposing (..)
 import List.Extra
+import Maybe.Extra
+import Poker.Card as Card exposing (Card)
 import Poker.Combo as Combo exposing (Combo)
-import Poker.HandOrCombo as Range
+import Poker.HandOrCombo as HandOrCombo
+import Poker.Rank as Rank
+import Poker.Suit as Suit
 import Random.List
 import Shrink
 import Test exposing (..)
@@ -14,15 +18,17 @@ import Test.Table as Table
 rangeTests : Test
 rangeTests =
     describe "range tests"
-        [ normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginal
+        [ test "combo order" <|
+            \_ ->
+                Expect.equal (HandOrCombo.parseAsCononicalHandsOrCombos "4s3s,4c2c" |> Result.map HandOrCombo.toNormalizedString) (Ok "4s3s,4c2c")
         , fuzz combosFuzzer "to normalized string and parsed to combos should be the same" <|
             \combos ->
                 Expect.equal
                     (combos
                         |> List.map Combo.toString
                         |> String.join ","
-                        |> Range.parseAndNormalize
-                        |> Result.map (List.concatMap Range.combos)
+                        |> HandOrCombo.parseAsCononicalHandsOrCombos
+                        |> Result.map (List.concatMap HandOrCombo.combos)
                         |> Result.withDefault []
                         |> List.sortWith Combo.order
                     )
@@ -30,7 +36,7 @@ rangeTests =
         ]
 
 
-normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginal =
+normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginalTests =
     let
         pairs =
             [ "AA"
@@ -58,11 +64,12 @@ normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginal =
         combos =
             [ "9s7s,9d7d"
             , "3c2s,3c2h"
+            , "4s3s,4c2c"
             ]
     in
     Table.testTable "Normalized ranges parsed and normalized should be same as original"
         (pairs ++ suited ++ offsuited ++ combos ++ (List.Extra.cartesianProduct [ pairs, suited, offsuited, combos ] |> List.map (String.join ",")))
-        (\strRange -> Expect.equal (Range.parseAndNormalize strRange |> Result.map Range.toNormalizedString) (Ok strRange))
+        (\strRange -> Expect.equal (HandOrCombo.parseAsCononicalHandsOrCombos strRange |> Result.map HandOrCombo.toNormalizedString) (Ok strRange))
 
 
 combosFuzzer : Fuzzer (List Combo)

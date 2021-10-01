@@ -1,4 +1,17 @@
-module Poker.Rank exposing (Rank(..), all, from, gt, gte, isConnected, lt, lte, order, parser, range, toString)
+module Poker.Rank exposing
+    ( Rank(..)
+    , all
+    , from
+    , gt
+    , gte
+    , isConnected
+    , lt
+    , lte
+    , order
+    , parser
+    , range
+    , toString
+    )
 
 import Parser exposing (Parser)
 
@@ -64,34 +77,21 @@ toString rank =
 
 all : List Rank
 all =
-    [ Two
-    , Three
-    , Four
-    , Five
-    , Six
-    , Seven
-    , Eight
-    , Nine
-    , Ten
-    , Jack
-    , Queen
-    , King
-    , Ace
-    ]
+    [ Ace, King, Queen, Jack, Ten, Nine, Eight, Seven, Six, Five, Four, Three, Two ]
 
 
 from : Rank -> List Rank
 from rank =
-    all |> List.reverse |> List.filter (\r -> toInt r >= toInt rank)
+    all |> List.filter (\r -> toInt r >= toInt rank)
 
 
 range : Rank -> Rank -> List Rank
 range r1 r2 =
     if gt r1 r2 then
-        all |> List.reverse |> List.filter (\r -> (toInt r >= toInt r1) && (toInt r <= toInt r2))
+        all |> List.filter (\r -> (toInt r >= toInt r1) && (toInt r <= toInt r2))
 
     else
-        all |> List.reverse |> List.filter (\r -> (toInt r >= toInt r2) && (toInt r <= toInt r1))
+        all |> List.filter (\r -> (toInt r >= toInt r2) && (toInt r <= toInt r1))
 
 
 gt : Rank -> Rank -> Bool

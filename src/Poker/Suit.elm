@@ -1,4 +1,16 @@
-module Poker.Suit exposing (Suit(..), all, gt, gte, lt, lte, order, parser, suitCombinations, suitToChar, toString)
+module Poker.Suit exposing
+    ( Suit(..)
+    , all
+    , gt
+    , gte
+    , lt
+    , lte
+    , order
+    , parser
+    , suitCombinations
+    , suitToChar
+    , toString
+    )
 
 import List.Extra
 import Parser

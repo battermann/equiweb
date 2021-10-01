@@ -1,4 +1,23 @@
-module Poker.HandOrCombo exposing (HandOrCombo, best, combos, fromCombo, fromHand, isCombo, isHand, numberOfCombos, offsuitAces, offsuitBroadways, pairs, parseAndNormalize, percentage, range, suitedAces, suitedBroadways, toNormalizedString, toString)
+module Poker.HandOrCombo exposing
+    ( HandOrCombo
+    , best
+    , combos
+    , fromCombo
+    , fromHand
+    , isCombo
+    , isHand
+    , numberOfCombos
+    , offsuitAces
+    , offsuitBroadways
+    , pairs
+    , parseAsCononicalHandsOrCombos
+    , percentage
+    , range
+    , suitedAces
+    , suitedBroadways
+    , toNormalizedString
+    , toString
+    )
 
 import Maybe.Extra
 import Parser exposing ((|.), Parser)
@@ -76,8 +95,8 @@ percentageParser =
         |> Parser.map best
 
 
-parseAndNormalize : String -> Result (List String) (List HandOrCombo)
-parseAndNormalize rangeString =
+parseAsCononicalHandsOrCombos : String -> Result (List String) (List HandOrCombo)
+parseAsCononicalHandsOrCombos rangeString =
     rangeString
         |> Parser.run percentageParser
         |> Result.Extra.orElse
@@ -86,8 +105,7 @@ parseAndNormalize rangeString =
                 |> List.map (String.replace " " "")
                 |> List.map (Parser.run parser)
                 |> Result.Extra.combine
-                |> Result.map (List.concat >> toCannonicalHandOrCombos)
-                |> Result.map (List.sortWith order >> List.reverse)
+                |> Result.map (List.concat >> toCanonicalHandsOrCombos)
             )
         |> Result.Extra.mapBoth (always [ "Range is not valid" ]) identity
 
@@ -110,7 +128,20 @@ order hr1 hr2 =
 
 toRangeNotation : List HandOrCombo -> List RangeNotation
 toRangeNotation =
-    List.sortWith order >> List.reverse >> List.foldl combineHandOrCombo []
+    List.sortWith (reverseOrder order) >> List.foldl combineHandOrCombo []
+
+
+reverseOrder : (a -> a -> Order) -> a -> a -> Order
+reverseOrder ord a b =
+    case ord a b of
+        LT ->
+            GT
+
+        EQ ->
+            EQ
+
+        GT ->
+            LT
 
 
 combineHandOrCombo : HandOrCombo -> List RangeNotation -> List RangeNotation
@@ -145,7 +176,7 @@ combine handOrCombo ranges =
 
 toNormalizedString : List HandOrCombo -> String
 toNormalizedString =
-    toCannonicalHandOrCombos >> toRangeNotation >> List.reverse >> List.map RangeNotation.toString >> String.join ","
+    toCanonicalHandsOrCombos >> toRangeNotation >> List.reverse >> List.map RangeNotation.toString >> String.join ","
 
 
 combos : HandOrCombo -> List Combo
@@ -211,8 +242,8 @@ offsuitBroadways =
     Hand.offsuitBroadways |> List.map Hand
 
 
-toCannonicalHandOrCombos : List HandOrCombo -> List HandOrCombo
-toCannonicalHandOrCombos =
+toCanonicalHandsOrCombos : List HandOrCombo -> List HandOrCombo
+toCanonicalHandsOrCombos =
     List.concatMap combos >> combosToHandOrCombo
 
 
@@ -255,4 +286,3 @@ combosToHandOrCombo cs =
     Hand.grid
         |> List.concat
         |> List.concatMap (Hand.fold onPair onSuited onOffsuit)
-        |> List.sortWith order
