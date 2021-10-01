@@ -35,17 +35,19 @@ import List.Extra
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
-import Poker.Combo as Combo
-import Poker.Data as Data
+import Poker.Combo as Combo exposing (Combo)
 import Poker.Hand as Hand exposing (Hand)
+import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
 import Poker.Position as Position exposing (Position(..))
-import Poker.Range as Range exposing (HandRange)
+import Poker.Ranges as Ranges
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
 import Ports exposing (CopiedToClipboardMsg, SharingType(..))
+import RangeCellSelectState exposing (RangeCellSelectState)
 import RemoteData exposing (WebData)
 import Result.Extra
 import Round
+import SelectState exposing (SelectState)
 import Sharing
 import SimulationResult exposing (ResultLine, SimulationResult)
 import Svg
@@ -57,12 +59,12 @@ import Url.Parser.Query as Query
 
 
 type alias SimulationRequestForm =
-    { utg : Form.Field (List HandRange)
-    , mp : Form.Field (List HandRange)
-    , co : Form.Field (List HandRange)
-    , bu : Form.Field (List HandRange)
-    , sb : Form.Field (List HandRange)
-    , bb : Form.Field (List HandRange)
+    { utg : Form.Field (List HandOrCombo)
+    , mp : Form.Field (List HandOrCombo)
+    , co : Form.Field (List HandOrCombo)
+    , bu : Form.Field (List HandOrCombo)
+    , sb : Form.Field (List HandOrCombo)
+    , bb : Form.Field (List HandOrCombo)
     , board : Form.Field (List Card)
     }
 
@@ -76,32 +78,32 @@ setRange : Position -> String -> SimulationRequestForm -> SimulationRequestForm
 setRange position range form =
     case position of
         UTG ->
-            { form | utg = form.utg |> Form.setValue Range.parseAndNormalize range }
+            { form | utg = form.utg |> Form.setValue HandOrCombo.parseAndNormalize range }
 
         MP ->
-            { form | mp = form.mp |> Form.setValue Range.parseAndNormalize range }
+            { form | mp = form.mp |> Form.setValue HandOrCombo.parseAndNormalize range }
 
         CO ->
-            { form | co = form.co |> Form.setValue Range.parseAndNormalize range }
+            { form | co = form.co |> Form.setValue HandOrCombo.parseAndNormalize range }
 
         BU ->
-            { form | bu = form.bu |> Form.setValue Range.parseAndNormalize range }
+            { form | bu = form.bu |> Form.setValue HandOrCombo.parseAndNormalize range }
 
         SB ->
-            { form | sb = form.sb |> Form.setValue Range.parseAndNormalize range }
+            { form | sb = form.sb |> Form.setValue HandOrCombo.parseAndNormalize range }
 
         BB ->
-            { form | bb = form.bb |> Form.setValue Range.parseAndNormalize range }
+            { form | bb = form.bb |> Form.setValue HandOrCombo.parseAndNormalize range }
 
 
 initialForm : SimulationRequestForm
 initialForm =
-    { utg = { name = "UTG", value = "", validated = Range.parseAndNormalize "", edited = False }
-    , mp = { name = "MP", value = "", validated = Range.parseAndNormalize "", edited = False }
-    , co = { name = "CO", value = "", validated = Range.parseAndNormalize "", edited = False }
-    , bu = { name = "BU", value = "", validated = Range.parseAndNormalize "", edited = False }
-    , sb = { name = "SB", value = "", validated = Range.parseAndNormalize "", edited = False }
-    , bb = { name = "BB", value = "", validated = Range.parseAndNormalize "", edited = False }
+    { utg = { name = "UTG", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
+    , mp = { name = "MP", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
+    , co = { name = "CO", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
+    , bu = { name = "BU", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
+    , sb = { name = "SB", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
+    , bb = { name = "BB", value = "", validated = HandOrCombo.parseAndNormalize "", edited = False }
     , board = { name = "Board", value = "", validated = Ok [], edited = False }
     }
 
@@ -174,7 +176,7 @@ type alias Model =
     , boardSelectModalVisibility : Modal.Visibility
     , rangeSelectionModalVisibility : Modal.Visibility
     , boardSelection : List Card
-    , rangeSelection : List HandRange
+    , rangeSelection : List Combo
     , rangeSelectionPosition : Position
     , cardUnderMouse : Maybe Card
     , ignoreCardHoverState : Bool
@@ -401,7 +403,7 @@ handleApiResponse model result =
     )
 
 
-rangesFromForm : SimulationRequestForm -> List (List HandRange)
+rangesFromForm : SimulationRequestForm -> List (List HandOrCombo)
 rangesFromForm simulationRequestForm =
     [ simulationRequestForm.utg.validated
     , simulationRequestForm.mp.validated
@@ -578,7 +580,7 @@ update msg model =
             in
             ( { model
                 | rangeSelectionModalVisibility = Modal.shown
-                , rangeSelection = range
+                , rangeSelection = range |> List.concatMap HandOrCombo.combos
                 , rangeSelectionPosition = position
                 , slider = initialRangeSlider
               }
@@ -594,7 +596,7 @@ update msg model =
         MouseDown ->
             case model.handUnderMouse of
                 Just hand ->
-                    ( toggleHandSelection (Range.fromHand hand) { model | mouse = Pressed }, Cmd.none )
+                    ( toggleHandSelection hand { model | mouse = Pressed }, Cmd.none )
 
                 Nothing ->
                     ( { model | mouse = Pressed }, Cmd.none )
@@ -607,7 +609,7 @@ update msg model =
 
         HandHover (Just hand) ->
             if model.mouse == Pressed then
-                ( toggleHandSelection (Range.fromHand hand) { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }, Cmd.none )
+                ( toggleHandSelection hand { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }, Cmd.none )
 
             else
                 ( { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }, Cmd.none )
@@ -617,7 +619,7 @@ update msg model =
 
         SelectPairs ->
             ( { model
-                | rangeSelection = model.rangeSelection ++ Range.pairs |> List.Extra.unique
+                | rangeSelection = model.rangeSelection ++ (HandOrCombo.pairs |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
                 , slider = initialRangeSlider
               }
             , Cmd.none
@@ -625,7 +627,7 @@ update msg model =
 
         SelectSuitedAces ->
             ( { model
-                | rangeSelection = model.rangeSelection ++ Range.suitedAces |> List.Extra.unique
+                | rangeSelection = model.rangeSelection ++ (HandOrCombo.suitedAces |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
                 , slider = initialRangeSlider
               }
             , Cmd.none
@@ -633,7 +635,7 @@ update msg model =
 
         SelectSuitedBroadways ->
             ( { model
-                | rangeSelection = model.rangeSelection ++ Range.suitedBroadways |> List.Extra.unique
+                | rangeSelection = model.rangeSelection ++ (HandOrCombo.suitedBroadways |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
                 , slider = initialRangeSlider
               }
             , Cmd.none
@@ -641,7 +643,7 @@ update msg model =
 
         SelectOffsuitAces ->
             ( { model
-                | rangeSelection = model.rangeSelection ++ Range.offsuitAces |> List.Extra.unique
+                | rangeSelection = model.rangeSelection ++ (HandOrCombo.offsuitAces |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
                 , slider = initialRangeSlider
               }
             , Cmd.none
@@ -649,7 +651,7 @@ update msg model =
 
         SelectOffsuitBroadways ->
             ( { model
-                | rangeSelection = model.rangeSelection ++ Range.offsuitBroadways |> List.Extra.unique
+                | rangeSelection = model.rangeSelection ++ (HandOrCombo.offsuitBroadways |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
                 , slider = initialRangeSlider
               }
             , Cmd.none
@@ -744,7 +746,11 @@ update msg model =
             )
 
         SelectRange range ->
-            ( { model | rangeSelection = range |> Range.parseAndNormalize |> Result.withDefault [] }, Cmd.none )
+            ( { model
+                | rangeSelection = range |> HandOrCombo.parseAndNormalize |> Result.withDefault [] |> List.concatMap HandOrCombo.combos
+              }
+            , Cmd.none
+            )
 
         RemoveBoard ->
             ( { model | simulationRequestForm = setBoard "" model.simulationRequestForm }, Cmd.none )
@@ -811,7 +817,7 @@ update msg model =
             in
             ( { model
                 | slider = newSlider
-                , rangeSelection = Range.range (Slider.fetchHighValue newSlider / 100) (Slider.fetchLowValue newSlider / 100)
+                , rangeSelection = HandOrCombo.range (Slider.fetchHighValue newSlider / 100) (Slider.fetchLowValue newSlider / 100) |> List.concatMap HandOrCombo.combos
               }
             , Cmd.none
             )
@@ -823,7 +829,7 @@ update msg model =
             in
             ( { model
                 | slider = newSlider
-                , rangeSelection = Range.range (Slider.fetchHighValue newSlider / 100) (Slider.fetchLowValue newSlider / 100)
+                , rangeSelection = HandOrCombo.range (Slider.fetchHighValue newSlider / 100) (Slider.fetchLowValue newSlider / 100) |> List.concatMap HandOrCombo.combos
               }
             , Cmd.none
             )
@@ -851,21 +857,22 @@ updatePopoverState f position model =
             { model | popoverStateBb = f model.popoverStateBb }
 
 
-toggleHandSelection : HandRange -> Model -> Model
-toggleHandSelection handRange model =
-    if model.rangeSelection |> List.member handRange then
-        { model
-            | rangeSelection = model.rangeSelection |> List.filter ((/=) handRange)
-            , ignoreRangeHoverState = True
-            , slider = initialRangeSlider
-        }
+toggleHandSelection : Hand -> Model -> Model
+toggleHandSelection hand model =
+    case model.rangeSelection |> Hand.combosOfHand hand of
+        Hand.All ->
+            { model
+                | rangeSelection = model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not)
+                , ignoreRangeHoverState = True
+                , slider = initialRangeSlider
+            }
 
-    else
-        { model
-            | rangeSelection = model.rangeSelection ++ [ handRange ]
-            , ignoreRangeHoverState = True
-            , slider = initialRangeSlider
-        }
+        _ ->
+            { model
+                | rangeSelection = model.rangeSelection ++ (hand |> Hand.combos)
+                , ignoreRangeHoverState = True
+                , slider = initialRangeSlider
+            }
 
 
 rewriteBoard : SimulationRequestForm -> SimulationRequestForm
@@ -877,29 +884,29 @@ rewrite : Position -> SimulationRequestForm -> SimulationRequestForm
 rewrite position form =
     case position of
         UTG ->
-            { form | utg = Form.rewrite form.utg Range.toNormalizedString }
+            { form | utg = Form.rewrite form.utg HandOrCombo.toNormalizedString }
 
         MP ->
-            { form | mp = Form.rewrite form.mp Range.toNormalizedString }
+            { form | mp = Form.rewrite form.mp HandOrCombo.toNormalizedString }
 
         CO ->
-            { form | co = Form.rewrite form.co Range.toNormalizedString }
+            { form | co = Form.rewrite form.co HandOrCombo.toNormalizedString }
 
         BU ->
-            { form | bu = Form.rewrite form.bu Range.toNormalizedString }
+            { form | bu = Form.rewrite form.bu HandOrCombo.toNormalizedString }
 
         SB ->
-            { form | sb = Form.rewrite form.sb Range.toNormalizedString }
+            { form | sb = Form.rewrite form.sb HandOrCombo.toNormalizedString }
 
         BB ->
-            { form | bb = Form.rewrite form.bb Range.toNormalizedString }
+            { form | bb = Form.rewrite form.bb HandOrCombo.toNormalizedString }
 
 
 confirmRangeSelection : Position -> Model -> ( Model, Cmd Msg )
 confirmRangeSelection position model =
     let
         form =
-            setRange position (model.rangeSelection |> List.map Range.toString |> String.join ",") model.simulationRequestForm
+            setRange position (model.rangeSelection |> List.map HandOrCombo.fromCombo |> HandOrCombo.toNormalizedString) model.simulationRequestForm
                 |> rewrite position
     in
     ( { model
@@ -998,7 +1005,7 @@ boardQueryParameter board =
             [ Url.Builder.string "board" (cards |> List.map Card.toString |> String.concat |> String.toLower) ]
 
 
-rangeQueryParameter : Position -> Form.Field (List HandRange) -> List Url.Builder.QueryParameter
+rangeQueryParameter : Position -> Form.Field (List HandOrCombo) -> List Url.Builder.QueryParameter
 rangeQueryParameter position field =
     case field.validated of
         Err _ ->
@@ -1008,7 +1015,7 @@ rangeQueryParameter position field =
             []
 
         Ok range ->
-            [ Url.Builder.string (position |> Position.toString |> String.toLower) (range |> Range.toNormalizedString |> String.toLower) ]
+            [ Url.Builder.string (position |> Position.toString |> String.toLower) (range |> HandOrCombo.toNormalizedString |> String.toLower) ]
 
 
 confirmBoardSelection : Model -> ( Model, Cmd Msg )
@@ -1048,7 +1055,7 @@ simulationResponseDecoder =
         |> P.required "equity_player_6" (Decode.nullable Decode.float)
 
 
-sendSimulationRequestHttp : List Card -> List (List HandRange) -> Cmd Msg
+sendSimulationRequestHttp : List Card -> List (List HandOrCombo) -> Cmd Msg
 sendSimulationRequestHttp board ranges =
     Http.get
         { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
@@ -1062,7 +1069,7 @@ sendSimulationRequestHttp board ranges =
                     ++ (ranges
                             |> List.indexedMap
                                 (\i range ->
-                                    Url.Builder.string ("range" ++ String.fromInt (i + 1)) (range |> List.map Range.toString |> String.join ",")
+                                    Url.Builder.string ("range" ++ String.fromInt (i + 1)) (range |> List.map HandOrCombo.toString |> String.join ",")
                                 )
                        )
                 )
@@ -1136,11 +1143,6 @@ equityValueView result =
             Input.value (Round.round 2 (100 * value.equity) ++ " %")
 
 
-handRangePlaceholder : String
-handRangePlaceholder =
-    ""
-
-
 validationFeedbackOutline : Form.Field a -> List (Input.Option msg)
 validationFeedbackOutline field =
     case ( field.validated, field.edited ) of
@@ -1173,13 +1175,13 @@ cardView msg selectState cursor refWidth card =
 
         opacity =
             case selectState of
-                Selected ->
+                SelectState.Selected ->
                     "1"
 
-                NotSelected ->
+                SelectState.NotSelected ->
                     "0.5"
 
-                MouseOver ->
+                SelectState.MouseOver ->
                     "0.7"
 
         width =
@@ -1233,12 +1235,12 @@ cardView msg selectState cursor refWidth card =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ rangeInputView (popoverState UTG model) UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Data.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState MP model) MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Data.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState CO model) CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Data.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState BU model) BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Data.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState SB model) SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Data.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState BB model) BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Data.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
+        [ rangeInputView (popoverState UTG model) UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Ranges.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState MP model) MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Ranges.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState CO model) CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Ranges.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState BU model) BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Ranges.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState SB model) SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Ranges.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState BB model) BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Ranges.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
         , Form.row
             []
             [ Form.col [ Col.sm10 ]
@@ -1324,7 +1326,7 @@ inputFormView model =
         ]
 
 
-rangeInputView : PopoverStates -> Position -> Form.Field (List HandRange) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
+rangeInputView : PopoverStates -> Position -> Form.Field (List HandOrCombo) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
 rangeInputView popoverStates position field result dropdownState ranges =
     Form.row []
         [ Form.col []
@@ -1339,8 +1341,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                           else
                             validationFeedbackOutline field
                          )
-                            ++ [ Input.attrs [ Html.Attributes.placeholder handRangePlaceholder ]
-                               , Input.value field.value
+                            ++ [ Input.value field.value
                                , Input.onInput (RangeInput position)
                                ]
                         )
@@ -1438,7 +1439,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
         ]
 
 
-numberOfCombosIfNotEmptyView : List HandRange -> List (Html Msg)
+numberOfCombosIfNotEmptyView : List HandOrCombo -> List (Html Msg)
 numberOfCombosIfNotEmptyView ranges =
     if ranges |> List.isEmpty |> not then
         [ numberOfCombosView ranges ]
@@ -1447,30 +1448,30 @@ numberOfCombosIfNotEmptyView ranges =
         []
 
 
-numberOfCombosView : List HandRange -> Html Msg
+numberOfCombosView : List HandOrCombo -> Html Msg
 numberOfCombosView ranges =
     Form.help []
         [ Html.div [ Spacing.mt1 ]
             [ Progress.progress
-                [ Progress.value (Range.percentage ranges * 100)
+                [ Progress.value (HandOrCombo.percentage ranges * 100)
                 , Progress.info
                 , Progress.wrapperAttrs [ Html.Attributes.style "height" "6px" ]
                 ]
-            , Html.text (((Range.percentage ranges * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((Range.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
+            , Html.text (((HandOrCombo.percentage ranges * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((HandOrCombo.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
             ]
         ]
 
 
-rewritable : Form.Field (List HandRange) -> Bool
+rewritable : Form.Field (List HandOrCombo) -> Bool
 rewritable field =
     field.value
-        /= (field.validated |> Result.withDefault [] |> Range.toNormalizedString)
+        /= (field.validated |> Result.withDefault [] |> HandOrCombo.toNormalizedString)
         && (field.validated |> Result.Extra.isOk)
 
 
 boardCardView : String -> Card -> Html Msg
 boardCardView height =
-    cardView Nothing Selected "default" height
+    cardView Nothing SelectState.Selected "default" height
 
 
 boardView : String -> List Card -> Html Msg
@@ -1661,7 +1662,7 @@ rowView position resultLine =
         Just result ->
             [ Table.tr []
                 [ Table.td [] [ Html.text (position |> Position.toString) ]
-                , Table.td [] [ Html.text (result.range |> Range.toNormalizedString) ]
+                , Table.td [] [ Html.text (result.range |> HandOrCombo.toNormalizedString) ]
                 , Table.td [] [ Html.text (Round.round 2 (result.equity * 100) ++ "%") ]
                 ]
             ]
@@ -1680,20 +1681,20 @@ cardSelectState card model =
                     && not model.ignoreCardHoverState
                     && (List.length model.boardSelection < 5 || (model.boardSelection |> List.member card))
             then
-                MouseOver
+                SelectState.MouseOver
 
             else if model.boardSelection |> List.member card then
-                Selected
+                SelectState.Selected
 
             else
-                NotSelected
+                SelectState.NotSelected
 
         Nothing ->
             if model.boardSelection |> List.member card then
-                Selected
+                SelectState.Selected
 
             else
-                NotSelected
+                SelectState.NotSelected
 
 
 rangeSelectionModalView : Model -> Html Msg
@@ -1722,7 +1723,7 @@ rangeSelectionModalView model =
                                             )
                                     )
                              )
-                                ++ [ numberOfCombosView model.rangeSelection ]
+                                ++ [ numberOfCombosView (model.rangeSelection |> List.map HandOrCombo.fromCombo) ]
                             )
                         ]
                     ]
@@ -1741,7 +1742,7 @@ rangeSelectionModalView model =
                         , toggleButton =
                             Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Preset Ranges" ]
                         , items =
-                            Data.positionalRanges
+                            Ranges.positionalRanges
                                 |> List.filter (.position >> (==) model.rangeSelectionPosition)
                                 |> List.map
                                     (\r ->
@@ -1774,42 +1775,45 @@ rangeSelectionModalView model =
         |> Modal.view model.rangeSelectionModalVisibility
 
 
-rangeSelectState : Hand -> Model -> SelectState
+rangeSelectState : Hand -> Model -> RangeCellSelectState
 rangeSelectState hand model =
     case model.handUnderMouse of
-        Just hum ->
-            if hum == hand && not model.ignoreRangeHoverState then
-                MouseOver
-
-            else if model.rangeSelection |> List.member (Range.fromHand hand) then
-                Selected
+        Just handUnderMouse ->
+            if handUnderMouse == hand && not model.ignoreRangeHoverState then
+                RangeCellSelectState.MouseOver
 
             else
-                NotSelected
+                case model.rangeSelection |> Hand.combosOfHand hand of
+                    Hand.All ->
+                        RangeCellSelectState.Selected
+
+                    Hand.None ->
+                        RangeCellSelectState.NotSelected
+
+                    Hand.Some n ->
+                        RangeCellSelectState.PartiallySelected n
 
         Nothing ->
-            if model.rangeSelection |> List.member (Range.fromHand hand) then
-                Selected
+            case model.rangeSelection |> Hand.combosOfHand hand of
+                Hand.All ->
+                    RangeCellSelectState.Selected
 
-            else
-                NotSelected
+                Hand.None ->
+                    RangeCellSelectState.NotSelected
 
-
-type SelectState
-    = Selected
-    | NotSelected
-    | MouseOver
+                Hand.Some n ->
+                    RangeCellSelectState.PartiallySelected n
 
 
-cellView : SelectState -> String -> Hand -> Html Msg
+cellView : RangeCellSelectState -> String -> Hand -> Html Msg
 cellView cs size hand =
     let
         ( fontColor, color, opacity ) =
             case cs of
-                Selected ->
+                RangeCellSelectState.Selected ->
                     ( "white", "#9b5378", "1" )
 
-                NotSelected ->
+                RangeCellSelectState.NotSelected ->
                     if hand |> Hand.isOffsuit then
                         ( "#aaaaaa", "#eeeeee", "1" )
 
@@ -1819,8 +1823,11 @@ cellView cs size hand =
                     else
                         ( "#aaaaaa", "#cccccc", "1" )
 
-                MouseOver ->
+                RangeCellSelectState.MouseOver ->
                     ( "white", "#9b5378", "0.5" )
+
+                RangeCellSelectState.PartiallySelected _ ->
+                    ( "white", "#db9713", "1" )
     in
     Html.div
         [ Html.Attributes.style "width" size

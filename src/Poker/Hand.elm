@@ -1,4 +1,4 @@
-module Poker.Hand exposing (Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combos, grid, highCard, isOffsuit, isPair, isSuited, lowCard, magic, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toHandRanges, toString)
+module Poker.Hand exposing (CombosOfHand(..), Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combine, combos, combosOfHand, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toRangeNotation, toString)
 
 import List
 import List.Extra
@@ -6,7 +6,7 @@ import Maybe.Extra
 import Parser exposing ((|.), (|=), Parser)
 import Poker.Card exposing (Card)
 import Poker.Combo as Combo exposing (Combo)
-import Poker.Ranges exposing (Ranges(..))
+import Poker.RangeNotation exposing (RangeNotation(..))
 import Poker.Rank as Rank exposing (Rank(..))
 import Poker.Suit as Suit
 
@@ -399,8 +399,8 @@ order lhs rhs =
                 EQ
 
 
-toHandRanges : Hand -> Ranges
-toHandRanges hand =
+toRangeNotation : Hand -> RangeNotation
+toRangeNotation hand =
     case hand of
         Pair Rank.Ace ->
             PairPlus Rank.Ace
@@ -423,59 +423,59 @@ toHandRanges hand =
                 OffsuitRange h l l
 
 
-magic : Hand -> Ranges -> List Ranges
-magic hand ranges =
+combine : Hand -> RangeNotation -> List RangeNotation
+combine hand ranges =
     case ( hand, ranges ) of
         ( Pair low, PairPlus high ) ->
             if Rank.isConnected high low then
                 [ PairPlus low ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toRangeNotation hand, ranges ]
 
         ( Pair lowest, PairRange high low ) ->
             if Rank.isConnected low lowest then
                 [ PairRange high lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toRangeNotation hand, ranges ]
 
         ( Pair _, _ ) ->
-            [ toHandRanges hand, ranges ]
+            [ toRangeNotation hand, ranges ]
 
         ( Suited high lowest, SuitedPlus otherHigh low ) ->
             if high == otherHigh && Rank.isConnected low lowest then
                 [ SuitedPlus high lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toRangeNotation hand, ranges ]
 
         ( Suited high lowest, SuitedRange otherHigh lowTo lowFrom ) ->
             if high == otherHigh && Rank.isConnected lowFrom lowest then
                 [ SuitedRange high lowTo lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toRangeNotation hand, ranges ]
 
         ( Suited _ _, _ ) ->
-            [ toHandRanges hand, ranges ]
+            [ toRangeNotation hand, ranges ]
 
         ( Offsuit high lowest, OffsuitPlus otherHigh low ) ->
             if high == otherHigh && Rank.isConnected low lowest then
                 [ OffsuitPlus high lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toRangeNotation hand, ranges ]
 
         ( Offsuit high lowest, OffsuitRange otherHigh lowTo lowFrom ) ->
             if high == otherHigh && Rank.isConnected lowFrom lowest then
                 [ OffsuitRange high lowTo lowest ]
 
             else
-                [ toHandRanges hand, ranges ]
+                [ toRangeNotation hand, ranges ]
 
         ( Offsuit _ _, _ ) ->
-            [ toHandRanges hand, ranges ]
+            [ toRangeNotation hand, ranges ]
 
 
 pairs : List Hand
@@ -512,6 +512,62 @@ offsuitBroadways =
 allOrderedByRank : List Hand
 allOrderedByRank =
     allWithAccumulatedNumberOfCombosOrderedByRank |> List.map (\( h, _, _ ) -> h)
+
+
+fold : (Rank -> a) -> (Rank -> Rank -> a) -> (Rank -> Rank -> a) -> Hand -> a
+fold onPair onSuited onOffsuit hand =
+    case hand of
+        Pair r ->
+            onPair r
+
+        Suited h l ->
+            onSuited h l
+
+        Offsuit h l ->
+            onOffsuit h l
+
+
+type CombosOfHand
+    = All
+    | None
+    | Some Int
+
+
+combosOfHand : Hand -> List Combo -> CombosOfHand
+combosOfHand hand cs =
+    case hand of
+        Pair r ->
+            case cs |> Combo.getPairs r |> List.length of
+                0 ->
+                    None
+
+                6 ->
+                    All
+
+                n ->
+                    Some n
+
+        Suited h l ->
+            case cs |> Combo.getSuited h l |> List.length of
+                0 ->
+                    None
+
+                4 ->
+                    All
+
+                n ->
+                    Some n
+
+        Offsuit h l ->
+            case cs |> Combo.getOffsuit h l |> List.length of
+                0 ->
+                    None
+
+                12 ->
+                    All
+
+                n ->
+                    Some n
 
 
 allWithAccumulatedNumberOfCombosOrderedByRank : List ( Hand, Int, Float )

@@ -1,10 +1,10 @@
-module Poker.Combo exposing (Combo, all, combo, order, parser, toString, total)
+module Poker.Combo exposing (Combo, all, combo, getOffsuit, getPairs, getSuited, isOffsuit, isPair, isSuited, order, parser, toString, total)
 
 import List.Extra
 import Maybe.Extra
 import Parser exposing ((|.), (|=))
 import Poker.Card as Card exposing (Card)
-import Poker.Rank as Rank
+import Poker.Rank as Rank exposing (Rank)
 import Poker.Suit as Suit
 
 
@@ -81,3 +81,38 @@ order (Combo h1 l1) (Combo h2 l2) =
 total : Int
 total =
     1326
+
+
+isPair : Combo -> Bool
+isPair (Combo card1 card2) =
+    card1.rank == card2.rank
+
+
+isSuited : Combo -> Bool
+isSuited (Combo card1 card2) =
+    card1.suit == card2.suit
+
+
+isOffsuit : Combo -> Bool
+isOffsuit c =
+    not (isPair c) && not (isSuited c)
+
+
+getPairs : Rank -> List Combo -> List Combo
+getPairs rank =
+    List.filter (\c -> isPair c && (fst c).rank == rank) >> List.Extra.unique
+
+
+sameRanks : Combo -> Rank -> Rank -> Bool
+sameRanks (Combo c1 c2) r1 r2 =
+    (c1.rank == r1 && c2.rank == r2) || (c1.rank == r2 && c2.rank == r1)
+
+
+getSuited : Rank -> Rank -> List Combo -> List Combo
+getSuited rank1 rank2 =
+    List.filter (\c -> isSuited c && sameRanks c rank1 rank2) >> List.Extra.unique
+
+
+getOffsuit : Rank -> Rank -> List Combo -> List Combo
+getOffsuit rank1 rank2 =
+    List.filter (\c -> isOffsuit c && sameRanks c rank1 rank2) >> List.Extra.unique
