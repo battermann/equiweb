@@ -6,3 +6,4 @@ type RangeCellSelectState
     | PartiallySelected Int
     | NotSelected
     | MouseOver
+    | MouseOverDuringSuitSelection Int Int Int
