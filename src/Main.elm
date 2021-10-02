@@ -1247,8 +1247,8 @@ cardView msg selectState cursor refWidth card =
     in
     Html.div
         ([ Html.Attributes.style "width" refWidth
-         , Html.Attributes.style "min-height" "40px"
-         , Html.Attributes.style "min-width" "35px"
+         , Html.Attributes.style "min-height" "38px"
+         , Html.Attributes.style "min-width" "25px"
          , Html.Attributes.style "max-height" "80px"
          , Html.Attributes.style "max-width" "57px"
          , Html.Attributes.style "cursor" cursor
@@ -1536,7 +1536,10 @@ boardView height cards =
 
 streetView : String -> String -> List Card -> Html Msg
 streetView label height cards =
-    Html.div [ Html.Attributes.style "margin-right" "10px" ] [ Html.h5 [] [ Html.text label ], Html.div [ Flex.block, Flex.row ] (cards |> List.map (boardCardView height)) ]
+    Html.div [ Html.Attributes.style "margin-right" "10px" ]
+        [ Html.h6 [] [ Html.text label ]
+        , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "2px" ] (cards |> List.map (boardCardView height))
+        ]
 
 
 streetsView : String -> List Card -> List (Html Msg)
@@ -1755,7 +1758,9 @@ rangeSelectionModalView : Model -> Html Msg
 rangeSelectionModalView model =
     Modal.config CloseRangeSelectionModal
         |> Modal.attrs [ Html.Attributes.class "modal-xl modal-fullscreen-xxl-down" ]
-        |> Modal.h4 [] [ Html.text (model.rangeSelectionPosition |> Position.toString) ]
+        |> Modal.h2 [ Flex.block, Flex.row, Flex.alignItemsCenter, Flex.justifyBetween, Size.w50 ]
+            [ Html.text (model.rangeSelectionPosition |> Position.toString)
+            ]
         |> Modal.body []
             [ Grid.row []
                 [ Grid.col []
@@ -1782,55 +1787,59 @@ rangeSelectionModalView model =
                         ]
                     ]
                 , Grid.col []
-                    (case model.suitSelection of
-                        Just suitSelection ->
-                            [ Button.button
-                                [ Button.attrs
-                                    [ Spacing.mb2
-                                    , Html.Attributes.style "height" "38px"
+                    ([ Html.div [ Flex.block, Flex.row, Spacing.mb2 ] [ boardView "27px" (model.simulationRequestForm.board.validated |> Result.withDefault []) ]
+                     , Html.hr [] []
+                     ]
+                        ++ (case model.suitSelection of
+                                Just suitSelection ->
+                                    [ Button.button
+                                        [ Button.attrs
+                                            [ Spacing.mb2
+                                            , Html.Attributes.style "height" "38px"
+                                            ]
+                                        , Button.light
+                                        , Button.onClick ToggleSuitSelection
+                                        ]
+                                        [ Html.i [ Html.Attributes.class "fas fa-chevron-left" ] [] ]
+                                    , Html.div [ Spacing.mb2, Flex.col, Flex.block, Html.Attributes.style "gap" "10px" ]
+                                        [ suitedSuitSelectionView suitSelection.suited
+                                        , pairsSuitSelectionView suitSelection.pairs
+                                        , offsuitSuitSelectionView suitSelection.offsuit
+                                        ]
                                     ]
-                                , Button.light
-                                , Button.onClick ToggleSuitSelection
-                                ]
-                                [ Html.i [ Html.Attributes.class "fas fa-chevron-left" ] [] ]
-                            , Html.div [ Spacing.mb2, Flex.col, Flex.block, Html.Attributes.style "gap" "10px" ]
-                                [ suitedSuitSelectionView suitSelection.suited
-                                , pairsSuitSelectionView suitSelection.pairs
-                                , offsuitSuitSelectionView suitSelection.offsuit
-                                ]
-                            ]
 
-                        Nothing ->
-                            [ suitSelectionButton
-                            , Html.div [ Size.w100 ]
-                                [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px" ]
-                                    [ Html.div [] [ Html.text ("PFR: " ++ Round.round 2 (Slider.fetchLowValue model.slider) ++ "%") ]
-                                    , Html.div [] [ Html.text ("VPIP: " ++ Round.round 2 (Slider.fetchHighValue model.slider) ++ "%") ]
+                                Nothing ->
+                                    [ suitSelectionButton
+                                    , Html.div [ Size.w100 ]
+                                        [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px" ]
+                                            [ Html.div [] [ Html.text ("PFR: " ++ Round.round 2 (Slider.fetchLowValue model.slider) ++ "%") ]
+                                            , Html.div [] [ Html.text ("VPIP: " ++ Round.round 2 (Slider.fetchHighValue model.slider) ++ "%") ]
+                                            ]
+                                        , Html.div [] [ Slider.view model.slider ]
+                                        ]
+                                    , Dropdown.dropdown
+                                        model.rangeSelectionDropdown
+                                        { options = [ Dropdown.attrs [ Spacing.mb2 ] ]
+                                        , toggleMsg = RangeSelectionDropdownMsg
+                                        , toggleButton =
+                                            Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Preset Ranges" ]
+                                        , items =
+                                            Ranges.positionalRanges
+                                                |> List.filter (.position >> (==) model.rangeSelectionPosition)
+                                                |> List.map
+                                                    (\r ->
+                                                        Dropdown.buttonItem [ Html.Events.onClick (SelectRange r.range) ] [ Html.text r.label ]
+                                                    )
+                                        }
+                                    , Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
+                                        [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "POCKET PAIRS" ]
+                                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "SUITED ACES" ]
+                                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "SUITED BROADWAYS" ]
+                                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "OFFSUIT ACES" ]
+                                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
+                                        ]
                                     ]
-                                , Html.div [] [ Slider.view model.slider ]
-                                ]
-                            , Dropdown.dropdown
-                                model.rangeSelectionDropdown
-                                { options = [ Dropdown.attrs [ Spacing.mb2 ] ]
-                                , toggleMsg = RangeSelectionDropdownMsg
-                                , toggleButton =
-                                    Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Preset Ranges" ]
-                                , items =
-                                    Ranges.positionalRanges
-                                        |> List.filter (.position >> (==) model.rangeSelectionPosition)
-                                        |> List.map
-                                            (\r ->
-                                                Dropdown.buttonItem [ Html.Events.onClick (SelectRange r.range) ] [ Html.text r.label ]
-                                            )
-                                }
-                            , Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
-                                [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "POCKET PAIRS" ]
-                                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "SUITED ACES" ]
-                                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "SUITED BROADWAYS" ]
-                                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "OFFSUIT ACES" ]
-                                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
-                                ]
-                            ]
+                           )
                     )
                 ]
             ]
