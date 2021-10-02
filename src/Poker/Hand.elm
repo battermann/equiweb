@@ -5,7 +5,7 @@ module Poker.Hand exposing
     , allWithAccumulatedNumberOfCombosOrderedByRank
     , combine
     , combos
-    , combosOfHand
+    , filter
     , fold
     , grid
     , highCard
@@ -13,6 +13,7 @@ module Poker.Hand exposing
     , isPair
     , isSuited
     , lowCard
+    , numCombosOfHand
     , offsuit
     , offsuitAces
     , offsuitBroadways
@@ -552,14 +553,27 @@ fold onPair onSuited onOffsuit hand =
             onOffsuit h l
 
 
+filter : Hand -> List Combo -> List Combo
+filter hand cs =
+    case hand of
+        Pair r ->
+            cs |> Combo.getPairs r
+
+        Suited h l ->
+            cs |> Combo.getSuited h l
+
+        Offsuit h l ->
+            cs |> Combo.getOffsuit h l
+
+
 type CombosOfHand
     = All Int
     | None
     | Some Int
 
 
-combosOfHand : Hand -> List Combo -> CombosOfHand
-combosOfHand hand cs =
+numCombosOfHand : Hand -> List Combo -> CombosOfHand
+numCombosOfHand hand cs =
     case hand of
         Pair r ->
             case cs |> Combo.getPairs r |> List.length of

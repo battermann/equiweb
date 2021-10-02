@@ -17,7 +17,6 @@
     "tailwindcss": "^2.2.15"
   },
   "dependencies": {
-    "bootstrap": "^5.1.1",
-    "bootswatch": "^5.1.1"
+    "bootstrap": "^5.1.1"
   }
 }

@@ -200,6 +200,7 @@ type alias Model =
     , popoverStateBoard : Popover.State
     , popoverStateClearBoard : Popover.State
     , slider : Slider.DoubleSlider Msg
+    , suitSelection : Maybe Suit.Selection
     }
 
 
@@ -287,6 +288,7 @@ init url key =
     , popoverStateBoard = Popover.initialState
     , popoverStateClearBoard = Popover.initialState
     , slider = initialRangeSlider
+    , suitSelection = Nothing
     }
         |> sendSimulationRequest
 
@@ -334,6 +336,10 @@ type Msg
     | ShowBoardSelectModal
     | ShowRangeSelectionModal Position
     | ToggleBoardSelection Card
+    | ToggleOffsuitSuitsSelection Suit Suit
+    | TogglePairsSuitsSelection Suit Suit
+    | ToggleSuitedSuitsSelection Suit
+    | ToggleSuitSelection
     | UrlChange Url
 
 
@@ -475,6 +481,7 @@ update msg model =
                         , handUnderMouse = Nothing
                         , ignoreRangeHoverState = False
                         , location = url
+                        , suitSelection = Nothing
                     }
 
         ApiResponseReceived result ->
@@ -588,7 +595,7 @@ update msg model =
             )
 
         CloseRangeSelectionModal ->
-            ( { model | rangeSelectionModalVisibility = Modal.hidden, rangeSelection = [] }, Cmd.none )
+            ( { model | rangeSelectionModalVisibility = Modal.hidden, rangeSelection = [], suitSelection = Nothing }, Cmd.none )
 
         ConfirmRangeSelection ->
             confirmRangeSelection model.rangeSelectionPosition model
@@ -605,7 +612,7 @@ update msg model =
             ( { model | mouse = Released }, Cmd.none )
 
         ClearRange ->
-            ( { model | rangeSelection = [], slider = initialRangeSlider }, Cmd.none )
+            ( { model | rangeSelection = [], suitSelection = Nothing, slider = initialRangeSlider }, Cmd.none )
 
         HandHover (Just hand) ->
             if model.mouse == Pressed then
@@ -834,6 +841,27 @@ update msg model =
             , Cmd.none
             )
 
+        ToggleSuitSelection ->
+            ( { model
+                | suitSelection =
+                    if model.suitSelection |> Maybe.Extra.isJust then
+                        Nothing
+
+                    else
+                        Just Suit.initialSelection
+              }
+            , Cmd.none
+            )
+
+        ToggleSuitedSuitsSelection suit ->
+            ( { model | suitSelection = model.suitSelection |> Maybe.map (Suit.toggleSuitedSelection suit) }, Cmd.none )
+
+        TogglePairsSuitsSelection suit1 suit2 ->
+            ( { model | suitSelection = model.suitSelection |> Maybe.map (Suit.togglePairsSelection suit1 suit2) }, Cmd.none )
+
+        ToggleOffsuitSuitsSelection suit1 suit2 ->
+            ( { model | suitSelection = model.suitSelection |> Maybe.map (Suit.toggleOffSuitSelection suit1 suit2) }, Cmd.none )
+
 
 updatePopoverState : (PopoverStates -> PopoverStates) -> Position -> Model -> Model
 updatePopoverState f position model =
@@ -859,20 +887,46 @@ updatePopoverState f position model =
 
 toggleHandSelection : Hand -> Model -> Model
 toggleHandSelection hand model =
-    case model.rangeSelection |> Hand.combosOfHand hand of
-        Hand.All _ ->
-            { model
-                | rangeSelection = model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not)
-                , ignoreRangeHoverState = True
-                , slider = initialRangeSlider
-            }
+    let
+        comboSelection suitSelection =
+            hand
+                |> Hand.fold
+                    (\rank -> suitSelection.pairs |> List.filterMap (\( suit1, suit2 ) -> Combo.combo (Card rank suit1) (Card rank suit2)))
+                    (\rank1 rank2 -> suitSelection.suited |> List.filterMap (\suit -> Combo.combo (Card rank1 suit) (Card rank2 suit)))
+                    (\rank1 rank2 -> suitSelection.offsuit |> List.filterMap (\( suit1, suit2 ) -> Combo.combo (Card rank1 suit1) (Card rank2 suit2)))
 
-        _ ->
-            { model
-                | rangeSelection = model.rangeSelection ++ (hand |> Hand.combos)
-                , ignoreRangeHoverState = True
-                , slider = initialRangeSlider
-            }
+        rangeSelection =
+            case ( model.rangeSelection |> Hand.numCombosOfHand hand, model.suitSelection ) of
+                ( Hand.All _, Nothing ) ->
+                    model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not)
+
+                ( Hand.All n, Just suitSelection ) ->
+                    if (comboSelection suitSelection |> List.length) == n then
+                        model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not)
+
+                    else
+                        (model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not))
+                            ++ comboSelection suitSelection
+
+                ( _, Nothing ) ->
+                    model.rangeSelection ++ (hand |> Hand.combos)
+
+                ( Hand.None, Just suitSelection ) ->
+                    model.rangeSelection ++ comboSelection suitSelection
+
+                ( Hand.Some _, Just suitSelection ) ->
+                    if (comboSelection suitSelection |> List.sortWith Combo.order) == (model.rangeSelection |> Hand.filter hand |> List.sortWith Combo.order) then
+                        model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not)
+
+                    else
+                        (model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not))
+                            ++ comboSelection suitSelection
+    in
+    { model
+        | rangeSelection = rangeSelection
+        , ignoreRangeHoverState = True
+        , slider = initialRangeSlider
+    }
 
 
 rewriteBoard : SimulationRequestForm -> SimulationRequestForm
@@ -913,6 +967,7 @@ confirmRangeSelection position model =
         | rangeSelectionModalVisibility = Modal.hidden
         , simulationRequestForm = form
         , rangeSelection = []
+        , suitSelection = Nothing
         , currentApiResponse = RemoteData.NotAsked
       }
     , Cmd.none
@@ -1727,35 +1782,56 @@ rangeSelectionModalView model =
                         ]
                     ]
                 , Grid.col []
-                    [ Html.div [ Size.w100 ]
-                        [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px" ]
-                            [ Html.div [] [ Html.text ("PFR: " ++ Round.round 2 (Slider.fetchLowValue model.slider) ++ "%") ]
-                            , Html.div [] [ Html.text ("VPIP: " ++ Round.round 2 (Slider.fetchHighValue model.slider) ++ "%") ]
+                    (case model.suitSelection of
+                        Just suitSelection ->
+                            [ Button.button
+                                [ Button.attrs
+                                    [ Spacing.mb2
+                                    , Html.Attributes.style "height" "38px"
+                                    ]
+                                , Button.light
+                                , Button.onClick ToggleSuitSelection
+                                ]
+                                [ Html.i [ Html.Attributes.class "fas fa-chevron-left" ] [] ]
+                            , Html.div [ Spacing.mb2, Flex.col, Flex.block, Html.Attributes.style "gap" "10px" ]
+                                [ suitedSuitSelectionView suitSelection.suited
+                                , pairsSuitSelectionView suitSelection.pairs
+                                , offsuitSuitSelectionView suitSelection.offsuit
+                                ]
                             ]
-                        , Html.div [] [ Slider.view model.slider ]
-                        ]
-                    , Dropdown.dropdown
-                        model.rangeSelectionDropdown
-                        { options = [ Dropdown.attrs [ Spacing.mb2 ] ]
-                        , toggleMsg = RangeSelectionDropdownMsg
-                        , toggleButton =
-                            Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Preset Ranges" ]
-                        , items =
-                            Ranges.positionalRanges
-                                |> List.filter (.position >> (==) model.rangeSelectionPosition)
-                                |> List.map
-                                    (\r ->
-                                        Dropdown.buttonItem [ Html.Events.onClick (SelectRange r.range) ] [ Html.text r.label ]
-                                    )
-                        }
-                    , Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
-                        [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "POCKET PAIRS" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "SUITED ACES" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "SUITED BROADWAYS" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "OFFSUIT ACES" ]
-                        , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
-                        ]
-                    ]
+
+                        Nothing ->
+                            [ suitSelectionButton
+                            , Html.div [ Size.w100 ]
+                                [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px" ]
+                                    [ Html.div [] [ Html.text ("PFR: " ++ Round.round 2 (Slider.fetchLowValue model.slider) ++ "%") ]
+                                    , Html.div [] [ Html.text ("VPIP: " ++ Round.round 2 (Slider.fetchHighValue model.slider) ++ "%") ]
+                                    ]
+                                , Html.div [] [ Slider.view model.slider ]
+                                ]
+                            , Dropdown.dropdown
+                                model.rangeSelectionDropdown
+                                { options = [ Dropdown.attrs [ Spacing.mb2 ] ]
+                                , toggleMsg = RangeSelectionDropdownMsg
+                                , toggleButton =
+                                    Dropdown.toggle [ Button.outlineSecondary ] [ Html.text "Preset Ranges" ]
+                                , items =
+                                    Ranges.positionalRanges
+                                        |> List.filter (.position >> (==) model.rangeSelectionPosition)
+                                        |> List.map
+                                            (\r ->
+                                                Dropdown.buttonItem [ Html.Events.onClick (SelectRange r.range) ] [ Html.text r.label ]
+                                            )
+                                }
+                            , Html.div [ Flex.block, Flex.row, Spacing.mb2, Flex.wrap, Html.Attributes.style "gap" "8px" ]
+                                [ Button.button [ Button.outlineSecondary, Button.onClick SelectPairs ] [ Html.text "POCKET PAIRS" ]
+                                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedAces ] [ Html.text "SUITED ACES" ]
+                                , Button.button [ Button.outlineSecondary, Button.onClick SelectSuitedBroadways ] [ Html.text "SUITED BROADWAYS" ]
+                                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitAces ] [ Html.text "OFFSUIT ACES" ]
+                                , Button.button [ Button.outlineSecondary, Button.onClick SelectOffsuitBroadways ] [ Html.text "OFFSUIT BROADWAYS" ]
+                                ]
+                            ]
+                    )
                 ]
             ]
         |> Modal.footer []
@@ -1774,15 +1850,127 @@ rangeSelectionModalView model =
         |> Modal.view model.rangeSelectionModalVisibility
 
 
+suitSelectionButton : Html Msg
+suitSelectionButton =
+    Button.button
+        [ Button.attrs
+            [ Spacing.mb2
+            , Html.Attributes.style "height" "38px"
+            ]
+        , Button.light
+        , Button.onClick ToggleSuitSelection
+        ]
+        [ Html.div [ Flex.row, Flex.block, Html.Attributes.style "gap" "6px" ]
+            (Suit.all |> List.map suitIconView)
+        ]
+
+
+suitIconView : Suit -> Html Msg
+suitIconView suit =
+    Html.img
+        [ case suit of
+            Suit.Club ->
+                Html.Attributes.src "images/playing-card-club-shape.svg"
+
+            Suit.Spades ->
+                Html.Attributes.src "images/playing-card-spade-shape.svg"
+
+            Suit.Diamond ->
+                Html.Attributes.src "images/playing-card-diamond-shape.svg"
+
+            Suit.Heart ->
+                Html.Attributes.src "images/playing-card-heart-shape.svg"
+        , Html.Attributes.height 20
+        , Html.Attributes.width 20
+        ]
+        []
+
+
+suitButtonView : Msg -> Bool -> Suit -> Suit -> Html Msg
+suitButtonView msg isSelected suit1 suit2 =
+    let
+        ( opacity, button ) =
+            if isSelected then
+                ( "1"
+                , Button.attrs
+                    [ Html.Attributes.style "background-color" "#bbbbbb"
+                    ]
+                )
+
+            else
+                ( "0.6"
+                , Button.attrs
+                    []
+                )
+    in
+    Button.button [ Button.light, Button.onClick msg, button ]
+        [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "2px", Html.Attributes.style "opacity" opacity ]
+            [ suitIconView suit1
+            , suitIconView suit2
+            ]
+        ]
+
+
+suitedSuitSelectionView : List Suit -> Html Msg
+suitedSuitSelectionView suitSelection =
+    Html.div []
+        [ Html.text "Suited"
+        , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px", Flex.wrap ]
+            (Suit.all |> List.map (\suit -> suitButtonView (ToggleSuitedSuitsSelection suit) (suitSelection |> List.member suit) suit suit))
+        ]
+
+
+pairsSuitSelectionView : List ( Suit, Suit ) -> Html Msg
+pairsSuitSelectionView suits =
+    Html.div []
+        [ Html.text "Pocket Pairs"
+        , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px", Flex.wrap ]
+            (Suit.suitCombinations |> List.map (\( suit1, suit2 ) -> suitButtonView (TogglePairsSuitsSelection suit1 suit2) (suits |> List.member ( suit1, suit2 )) suit1 suit2))
+        ]
+
+
+offsuitSuitSelectionView : List ( Suit, Suit ) -> Html Msg
+offsuitSuitSelectionView suits =
+    Html.div []
+        [ Html.text "Offsuit"
+        , Html.div [ Flex.block, Flex.col, Html.Attributes.style "gap" "10px" ]
+            (Suit.all
+                |> List.map
+                    (\suit1 ->
+                        Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px", Flex.wrap ]
+                            (Suit.all
+                                |> List.filterMap
+                                    (\suit2 ->
+                                        if suit1 /= suit2 then
+                                            Just <|
+                                                suitButtonView (ToggleOffsuitSuitsSelection suit1 suit2) (suits |> List.member ( suit1, suit2 )) suit1 suit2
+
+                                        else
+                                            Nothing
+                                    )
+                            )
+                    )
+            )
+        ]
+
+
 rangeSelectState : Hand -> Model -> RangeCellSelectState
 rangeSelectState hand model =
     case model.handUnderMouse of
         Just handUnderMouse ->
             if handUnderMouse == hand && not model.ignoreRangeHoverState then
-                RangeCellSelectState.MouseOver
+                case model.suitSelection of
+                    Nothing ->
+                        RangeCellSelectState.MouseOver
+
+                    Just suitSelection ->
+                        RangeCellSelectState.MouseOverDuringSuitSelection
+                            (suitSelection.suited |> List.length)
+                            (suitSelection.pairs |> List.length)
+                            (suitSelection.offsuit |> List.length)
 
             else
-                case model.rangeSelection |> Hand.combosOfHand hand of
+                case model.rangeSelection |> Hand.numCombosOfHand hand of
                     Hand.All n ->
                         RangeCellSelectState.Selected n
 
@@ -1793,7 +1981,7 @@ rangeSelectState hand model =
                         RangeCellSelectState.PartiallySelected n
 
         Nothing ->
-            case model.rangeSelection |> Hand.combosOfHand hand of
+            case model.rangeSelection |> Hand.numCombosOfHand hand of
                 Hand.All n ->
                     RangeCellSelectState.Selected n
 
@@ -1827,6 +2015,9 @@ cellView cs size hand =
 
                 RangeCellSelectState.PartiallySelected num ->
                     ( ( "white", "#db9713", "1" ), Just num )
+
+                RangeCellSelectState.MouseOverDuringSuitSelection numSuited numPairs numOffsuit ->
+                    ( ( "white", "#db9713", "0.5" ), Just (hand |> Hand.fold (always numPairs) (always (always numSuited)) (always (always numOffsuit))) )
     in
     Html.div
         [ Html.Attributes.style "width" size

@@ -54,6 +54,11 @@ i {
   z-index: 99;
 }
 
+[type="checkbox"]{
+  width: 0;
+  height: 0;
+}
+
 /* Double Slider */
 .input-range-container {
   display: inline-flex;
