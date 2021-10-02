@@ -1,4 +1,22 @@
-module Poker.Suit exposing (Suit(..), all, gt, gte, lt, lte, order, parser, suitCombinations, suitToChar, toString)
+module Poker.Suit exposing
+    ( Selection
+    , Suit(..)
+    , all
+    , gt
+    , gte
+    , initialSelection
+    , isSelectionEmpty
+    , lt
+    , lte
+    , order
+    , parser
+    , suitCombinations
+    , suitToChar
+    , toString
+    , toggleOffSuitSelection
+    , togglePairsSelection
+    , toggleSuitedSelection
+    )
 
 import List.Extra
 import Parser
@@ -122,3 +140,59 @@ order lhs rhs =
 
     else
         EQ
+
+
+type alias Selection =
+    { pairs : List ( Suit, Suit )
+    , suited : List Suit
+    , offsuit : List ( Suit, Suit )
+    }
+
+
+toggleSuitedSelection : Suit -> Selection -> Selection
+toggleSuitedSelection suit selection =
+    { selection
+        | suited =
+            if selection.suited |> List.member suit then
+                selection.suited |> List.filter ((/=) suit)
+
+            else
+                suit :: selection.suited
+    }
+
+
+toggleOffSuitSelection : Suit -> Suit -> Selection -> Selection
+toggleOffSuitSelection suit1 suit2 selection =
+    { selection
+        | offsuit =
+            if selection.offsuit |> List.member ( suit1, suit2 ) then
+                selection.offsuit |> List.filter ((/=) ( suit1, suit2 ))
+
+            else
+                ( suit1, suit2 ) :: selection.offsuit
+    }
+
+
+togglePairsSelection : Suit -> Suit -> Selection -> Selection
+togglePairsSelection suit1 suit2 selection =
+    { selection
+        | pairs =
+            if selection.pairs |> List.member ( suit1, suit2 ) then
+                selection.pairs |> List.filter ((/=) ( suit1, suit2 ))
+
+            else
+                ( suit1, suit2 ) :: selection.pairs
+    }
+
+
+initialSelection : Selection
+initialSelection =
+    { pairs = []
+    , suited = []
+    , offsuit = []
+    }
+
+
+isSelectionEmpty : Selection -> Bool
+isSelectionEmpty selection =
+    List.isEmpty selection.pairs && List.isEmpty selection.suited && List.isEmpty selection.offsuit

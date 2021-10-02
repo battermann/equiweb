@@ -1,4 +1,32 @@
-module Poker.Hand exposing (CombosOfHand(..), Hand, allOrderedByRank, allWithAccumulatedNumberOfCombosOrderedByRank, combine, combos, combosOfHand, fold, grid, highCard, isOffsuit, isPair, isSuited, lowCard, offsuit, offsuitAces, offsuitBroadways, order, pair, pairs, parser, suited, suitedAces, suitedBroadways, toRangeNotation, toString)
+module Poker.Hand exposing
+    ( CombosOfHand(..)
+    , Hand
+    , allOrderedByRank
+    , allWithAccumulatedNumberOfCombosOrderedByRank
+    , combine
+    , combos
+    , filter
+    , fold
+    , grid
+    , highCard
+    , isOffsuit
+    , isPair
+    , isSuited
+    , lowCard
+    , numCombosOfHand
+    , offsuit
+    , offsuitAces
+    , offsuitBroadways
+    , order
+    , pair
+    , pairs
+    , parser
+    , suited
+    , suitedAces
+    , suitedBroadways
+    , toRangeNotation
+    , toString
+    )
 
 import List
 import List.Extra
@@ -41,11 +69,9 @@ combos hand =
 grid : List (List Hand)
 grid =
     Rank.all
-        |> List.reverse
         |> List.map
             (\r1 ->
                 Rank.all
-                    |> List.reverse
                     |> List.map
                         (\r2 ->
                             if r1 == r2 then
@@ -527,14 +553,27 @@ fold onPair onSuited onOffsuit hand =
             onOffsuit h l
 
 
+filter : Hand -> List Combo -> List Combo
+filter hand cs =
+    case hand of
+        Pair r ->
+            cs |> Combo.getPairs r
+
+        Suited h l ->
+            cs |> Combo.getSuited h l
+
+        Offsuit h l ->
+            cs |> Combo.getOffsuit h l
+
+
 type CombosOfHand
-    = All
+    = All Int
     | None
     | Some Int
 
 
-combosOfHand : Hand -> List Combo -> CombosOfHand
-combosOfHand hand cs =
+numCombosOfHand : Hand -> List Combo -> CombosOfHand
+numCombosOfHand hand cs =
     case hand of
         Pair r ->
             case cs |> Combo.getPairs r |> List.length of
@@ -542,7 +581,7 @@ combosOfHand hand cs =
                     None
 
                 6 ->
-                    All
+                    All 6
 
                 n ->
                     Some n
@@ -553,7 +592,7 @@ combosOfHand hand cs =
                     None
 
                 4 ->
-                    All
+                    All 4
 
                 n ->
                     Some n
@@ -564,7 +603,7 @@ combosOfHand hand cs =
                     None
 
                 12 ->
-                    All
+                    All 12
 
                 n ->
                     Some n

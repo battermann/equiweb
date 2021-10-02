@@ -22,7 +22,7 @@ type alias Card =
 
 all : List Card
 all =
-    Suit.all |> List.Extra.andThen (\suit -> Rank.all |> List.reverse |> List.map (\rank -> Card rank suit))
+    Suit.all |> List.Extra.andThen (\suit -> Rank.all |> List.map (\rank -> Card rank suit))
 
 
 toString : Card -> String
