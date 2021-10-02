@@ -1937,7 +1937,7 @@ offsuitSuitSelectionView suits =
             (Suit.all
                 |> List.map
                     (\suit1 ->
-                        Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px", Flex.wrap ]
+                        Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "10px" ]
                             (Suit.all
                                 |> List.filterMap
                                     (\suit2 ->
