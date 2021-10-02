@@ -1324,7 +1324,7 @@ inputFormView model =
                                         , Button.onClick ShowBoardSelectModal
                                         , Button.attrs (Html.Attributes.tabindex -1 :: Popover.onHover model.popoverStateBoard PopoverStateBoard)
                                         ]
-                                        [ Html.img [ Html.Attributes.src "images/cards-icon.svg", Html.Attributes.width 20 ] [] ]
+                                        [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.width 20 ] [] ]
                                     )
                                     |> Popover.top
                                     |> Popover.content []
@@ -1787,9 +1787,15 @@ rangeSelectionModalView model =
                         ]
                     ]
                 , Grid.col []
-                    ([ Html.div [ Flex.block, Flex.row, Spacing.mb2 ] [ boardView "27px" (model.simulationRequestForm.board.validated |> Result.withDefault []) ]
-                     , Html.hr [] []
-                     ]
+                    ((case model.simulationRequestForm.board.validated |> Result.withDefault [] of
+                        [] ->
+                            []
+
+                        board ->
+                            [ Html.div [ Flex.block, Flex.row, Spacing.mb2 ] [ boardView "27px" board ]
+                            , Html.hr [] []
+                            ]
+                     )
                         ++ (case model.suitSelection of
                                 Just suitSelection ->
                                     [ Button.button
