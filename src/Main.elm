@@ -1354,7 +1354,11 @@ inputFormView model =
                     ]
                 ]
             ]
-        , Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ Button.button [ Button.light, Button.onClick ShowBoardSelectModal ] [ boardView True "pointer" "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ] ] ]
+        , if model.simulationRequestForm.board.validated == Ok [] then
+            Html.text ""
+
+          else
+            Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ Button.button [ Button.light, Button.onClick ShowBoardSelectModal ] [ boardView True "pointer" "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ] ] ]
         , if (rangesFromForm model.simulationRequestForm |> List.length) < 2 then
             Alert.simpleInfo [ Spacing.mt2 ] [ Html.text "You must fill in at least 2 ranges." ]
 
