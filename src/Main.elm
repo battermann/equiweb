@@ -1354,7 +1354,7 @@ inputFormView model =
                     ]
                 ]
             ]
-        , Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ boardView "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ] ]
+        , Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ Button.button [ Button.light, Button.onClick ShowBoardSelectModal ] [ boardView True "pointer" "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ] ] ]
         , if (rangesFromForm model.simulationRequestForm |> List.length) < 2 then
             Alert.simpleInfo [ Spacing.mt2 ] [ Html.text "You must fill in at least 2 ranges." ]
 
@@ -1524,35 +1524,36 @@ rewritable field =
         && (field.validated |> Result.Extra.isOk)
 
 
-boardCardView : String -> Card -> Html Msg
-boardCardView height =
-    cardView Nothing SelectState.Selected "default" height
+boardCardView : String -> String -> Card -> Html Msg
+boardCardView cursor width =
+    cardView Nothing SelectState.Selected cursor width
 
 
-boardView : String -> List Card -> Html Msg
-boardView height cards =
-    Html.div [ Flex.block, Flex.row ] (streetsView height cards)
+boardView : Bool -> String -> String -> List Card -> Html Msg
+boardView showLabel cursor width cards =
+    Html.div [ Flex.block, Flex.row ] (streetsView showLabel cursor width cards)
 
 
-streetView : String -> String -> List Card -> Html Msg
-streetView label height cards =
+streetView : String -> Maybe String -> String -> List Card -> Html Msg
+streetView cursor maybeLabel width cards =
     Html.div [ Html.Attributes.style "margin-right" "10px" ]
-        [ Html.h6 [] [ Html.text label ]
-        , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "2px" ] (cards |> List.map (boardCardView height))
-        ]
+        ((maybeLabel |> Maybe.Extra.unwrap [] (\label -> [ Html.h6 [ Flex.block, Flex.row, Flex.justifyCenter ] [ Html.text label ] ]))
+            ++ [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "2px" ] (cards |> List.map (boardCardView cursor width))
+               ]
+        )
 
 
-streetsView : String -> List Card -> List (Html Msg)
-streetsView height cards =
+streetsView : Bool -> String -> String -> List Card -> List (Html Msg)
+streetsView showLabel cursor width cards =
     case cards of
         _ :: _ :: _ :: [] ->
-            [ streetView "Flop" height cards ]
+            [ streetView cursor (Just "Flop" |> Maybe.Extra.filter (always showLabel)) width cards ]
 
         f1 :: f2 :: f3 :: turn :: [] ->
-            [ streetView "Flop" height [ f1, f2, f3 ], streetView "Turn" height [ turn ] ]
+            [ streetView cursor (Just "Flop" |> Maybe.Extra.filter (always showLabel)) width [ f1, f2, f3 ], streetView cursor (Just "Turn" |> Maybe.Extra.filter (always showLabel)) width [ turn ] ]
 
         f1 :: f2 :: f3 :: turn :: river :: [] ->
-            [ streetView "Flop" height [ f1, f2, f3 ], streetView "Turn" height [ turn ], streetView "River" height [ river ] ]
+            [ streetView cursor (Just "Flop" |> Maybe.Extra.filter (always showLabel)) width [ f1, f2, f3 ], streetView cursor (Just "Turn" |> Maybe.Extra.filter (always showLabel)) width [ turn ], streetView cursor (Just "River" |> Maybe.Extra.filter (always showLabel)) width [ river ] ]
 
         _ ->
             []
@@ -1629,7 +1630,7 @@ resultView index popoverStates result =
         |> Card.headerH4 []
             [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.alignItemsCenter ]
                 [ if result.board |> List.isEmpty |> not then
-                    boardView "30px" result.board
+                    boardView False "default" "30px" result.board
 
                   else
                     Html.text "Preflop"
@@ -1792,7 +1793,7 @@ rangeSelectionModalView model =
                             []
 
                         board ->
-                            [ Html.div [ Flex.block, Flex.row, Spacing.mb2 ] [ boardView "27px" board ]
+                            [ Html.div [ Flex.block, Flex.row, Spacing.mb2 ] [ boardView False "default" "27px" board ]
                             , Html.hr [] []
                             ]
                      )
