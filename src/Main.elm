@@ -203,7 +203,7 @@ type alias Model =
     , popoverStateClearBoard : Popover.State
     , slider : Slider.DoubleSlider Msg
     , suitSelection : Maybe Suit.Selection
-    , simulationApiHostName : Maybe String
+    , simulationApibaseUrl : Maybe String
     }
 
 
@@ -227,11 +227,6 @@ popoverState position model =
 
         BB ->
             model.popoverStateBb
-
-
-flagsDecoder : Decode.Decoder String
-flagsDecoder =
-    Decode.field "simulationApiHostName" Decode.string
 
 
 main : Program Decode.Value Model Msg
@@ -265,8 +260,8 @@ init flags url key =
         maybeForm =
             UrlParser.parse urlParser url
 
-        hostName =
-            Decode.decodeValue flagsDecoder flags |> Result.toMaybe
+        baseUrl =
+            Decode.decodeValue Decode.string flags |> Result.toMaybe
     in
     { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
     , currentApiResponse = RemoteData.NotAsked
@@ -300,7 +295,7 @@ init flags url key =
     , popoverStateClearBoard = Popover.initialState
     , slider = initialRangeSlider
     , suitSelection = Nothing
-    , simulationApiHostName = hostName
+    , simulationApibaseUrl = baseUrl
     }
         |> sendSimulationRequest
 
@@ -450,7 +445,7 @@ sendSimulationRequest model =
             | currentApiResponse = RemoteData.Loading
             , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
           }
-        , sendSimulationRequestHttp model.simulationApiHostName (model.simulationRequestForm.board.validated |> Result.withDefault []) (rangesFromForm model.simulationRequestForm)
+        , sendSimulationRequestHttp model.simulationApibaseUrl (model.simulationRequestForm.board.validated |> Result.withDefault []) (rangesFromForm model.simulationRequestForm)
         )
 
 
@@ -1134,13 +1129,13 @@ simulationResponseDecoder =
 
 
 sendSimulationRequestHttp : Maybe String -> List Card -> List (List HandOrCombo) -> Cmd Msg
-sendSimulationRequestHttp maybeHostname board ranges =
-    case maybeHostname of
-        Just hostname ->
+sendSimulationRequestHttp maybeBaseUrl board ranges =
+    case maybeBaseUrl of
+        Just baseUrl ->
             Http.get
                 { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
                 , url =
-                    Url.Builder.crossOrigin ("https://" ++ hostname)
+                    Url.Builder.crossOrigin baseUrl
                         [ "simulation" ]
                         ([ Url.Builder.string "board" (board |> List.map Card.toString |> String.concat)
                          , Url.Builder.string "stdev_target" "0.001"

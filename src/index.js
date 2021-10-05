@@ -3,11 +3,11 @@ import './main.css'
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
 
-const SIMULATION_API_HOST_NAME = process.env.ELM_APP_SIMULATION_API_HOST_NAME // E.g. "safe-shore-53897.herokuapp.com"
+const SIMULATION_API_BASE_URL = process.env.ELM_APP_SIMULATION_API_BASE_URL // E.g. "https://safe-shore-53897.herokuapp.com"
 
 var app = Elm.Main.init({
   node: document.getElementById('root'),
-  flags: { simulationApiHostName: SIMULATION_API_HOST_NAME }
+  flags: SIMULATION_API_BASE_URL
 });
 
 // If you want your app to work offline and load faster, you can change
