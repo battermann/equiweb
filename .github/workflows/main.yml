@@ -20,7 +20,7 @@ jobs:
       - run: npm install -g create-elm-app
       - run: npm install --production
       - run: elm-app test
-      - run: elm-app build
+      - run: ELM_APP_SIMULATION_API_HOST_NAME=${{ secrets.ELM_APP_SIMULATION_API_HOST_NAME }} elm-app build
       - run: mv ./build/index.html ./build/200.html      
       - run: npm install -g surge
       - run: surge ./build/ ${{ secrets.SURGE_DOMAIN }} --token ${{ secrets.SURGE_TOKEN }}

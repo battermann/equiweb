@@ -43,6 +43,7 @@ import Poker.Ranges as Ranges
 import Poker.Rank as Rank
 import Poker.Suit as Suit exposing (Suit(..))
 import Ports exposing (CopiedToClipboardMsg, SharingType(..))
+import Process
 import RangeCellSelectState exposing (RangeCellSelectState)
 import RemoteData exposing (WebData)
 import Result.Extra
@@ -52,6 +53,7 @@ import Sharing
 import SimulationResult exposing (ResultLine, SimulationResult)
 import Svg
 import Svg.Attributes
+import Task
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as UrlParser exposing ((<?>), Parser)
@@ -201,6 +203,7 @@ type alias Model =
     , popoverStateClearBoard : Popover.State
     , slider : Slider.DoubleSlider Msg
     , suitSelection : Maybe Suit.Selection
+    , simulationApiHostName : Maybe String
     }
 
 
@@ -226,10 +229,15 @@ popoverState position model =
             model.popoverStateBb
 
 
-main : Program () Model Msg
+flagsDecoder : Decode.Decoder String
+flagsDecoder =
+    Decode.field "simulationApiHostName" Decode.string
+
+
+main : Program Decode.Value Model Msg
 main =
     Browser.application
-        { init = \_ -> init
+        { init = init
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -251,11 +259,14 @@ initialRangeSlider =
         }
 
 
-init : Url -> Navigation.Key -> ( Model, Cmd Msg )
-init url key =
+init : Decode.Value -> Url -> Navigation.Key -> ( Model, Cmd Msg )
+init flags url key =
     let
         maybeForm =
             UrlParser.parse urlParser url
+
+        hostName =
+            Decode.decodeValue flagsDecoder flags |> Result.toMaybe
     in
     { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
     , currentApiResponse = RemoteData.NotAsked
@@ -289,6 +300,7 @@ init url key =
     , popoverStateClearBoard = Popover.initialState
     , slider = initialRangeSlider
     , suitSelection = Nothing
+    , simulationApiHostName = hostName
     }
         |> sendSimulationRequest
 
@@ -438,7 +450,7 @@ sendSimulationRequest model =
             | currentApiResponse = RemoteData.Loading
             , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
           }
-        , sendSimulationRequestHttp (model.simulationRequestForm.board.validated |> Result.withDefault []) (rangesFromForm model.simulationRequestForm)
+        , sendSimulationRequestHttp model.simulationApiHostName (model.simulationRequestForm.board.validated |> Result.withDefault []) (rangesFromForm model.simulationRequestForm)
         )
 
 
@@ -1099,6 +1111,17 @@ type alias ApiResponse =
     }
 
 
+emptyApiResponse : Int -> ApiResponse
+emptyApiResponse num =
+    { equityPlayer1 = 0
+    , equityPlayer2 = 0
+    , equityPlayer3 = Just 0 |> Maybe.Extra.filter (always <| num > 2)
+    , equityPlayer4 = Just 0 |> Maybe.Extra.filter (always <| num > 3)
+    , equityPlayer5 = Just 0 |> Maybe.Extra.filter (always <| num > 4)
+    , equityPlayer6 = Just 0 |> Maybe.Extra.filter (always <| num > 5)
+    }
+
+
 simulationResponseDecoder : Decode.Decoder ApiResponse
 simulationResponseDecoder =
     Decode.succeed ApiResponse
@@ -1110,25 +1133,30 @@ simulationResponseDecoder =
         |> P.required "equity_player_6" (Decode.nullable Decode.float)
 
 
-sendSimulationRequestHttp : List Card -> List (List HandOrCombo) -> Cmd Msg
-sendSimulationRequestHttp board ranges =
-    Http.get
-        { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
-        , url =
-            Url.Builder.crossOrigin "https://safe-shore-53897.herokuapp.com"
-                [ "simulation" ]
-                ([ Url.Builder.string "board" (board |> List.map Card.toString |> String.concat)
-                 , Url.Builder.string "stdev_target" "0.001"
-                 , Url.Builder.string "num_iterations" "500"
-                 ]
-                    ++ (ranges
-                            |> List.indexedMap
-                                (\i range ->
-                                    Url.Builder.string ("range" ++ String.fromInt (i + 1)) (range |> List.map HandOrCombo.toString |> String.join ",")
-                                )
-                       )
-                )
-        }
+sendSimulationRequestHttp : Maybe String -> List Card -> List (List HandOrCombo) -> Cmd Msg
+sendSimulationRequestHttp maybeHostname board ranges =
+    case maybeHostname of
+        Just hostname ->
+            Http.get
+                { expect = Http.expectJson (RemoteData.fromResult >> ApiResponseReceived) simulationResponseDecoder
+                , url =
+                    Url.Builder.crossOrigin ("https://" ++ hostname)
+                        [ "simulation" ]
+                        ([ Url.Builder.string "board" (board |> List.map Card.toString |> String.concat)
+                         , Url.Builder.string "stdev_target" "0.001"
+                         , Url.Builder.string "num_iterations" "500"
+                         ]
+                            ++ (ranges
+                                    |> List.indexedMap
+                                        (\i range ->
+                                            Url.Builder.string ("range" ++ String.fromInt (i + 1)) (range |> List.map HandOrCombo.toString |> String.join ",")
+                                        )
+                               )
+                        )
+                }
+
+        Nothing ->
+            Process.sleep 1000 |> Task.perform (always (ApiResponseReceived (RemoteData.succeed (emptyApiResponse (List.length ranges)))))
 
 
 
