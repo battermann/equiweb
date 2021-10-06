@@ -28,6 +28,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Http
+import Icons
 import Json.Decode as Decode exposing (Error)
 import Json.Decode.Pipeline as P
 import Keyboard exposing (RawKey)
@@ -1237,19 +1238,19 @@ validationFeedbackOutline field =
 cardView : Maybe Msg -> SelectState -> String -> String -> Card -> Html Msg
 cardView msg selectState cursor refWidth card =
     let
-        color =
+        ( color, icon ) =
             case card.suit of
                 Club ->
-                    "forestgreen"
+                    ( "forestgreen", Icons.club )
 
                 Spades ->
-                    "darkslategrey"
+                    ( "darkslategrey", Icons.spade )
 
                 Heart ->
-                    "darkred"
+                    ( "darkred", Icons.heart )
 
                 Diamond ->
-                    "royalblue"
+                    ( "royalblue", Icons.diamond )
 
         opacity =
             case selectState of
@@ -1298,14 +1299,15 @@ cardView msg selectState cursor refWidth card =
                 []
             , Svg.text_
                 [ Svg.Attributes.x ((width * 0.5) |> String.fromFloat)
-                , Svg.Attributes.y ((height * 0.6) |> String.fromFloat)
+                , Svg.Attributes.y ((height * 0.65) |> String.fromFloat)
                 , Svg.Attributes.fill "white"
-                , Svg.Attributes.fontSize (width * 1.2 |> String.fromFloat)
+                , Svg.Attributes.fontSize (width * 1.1 |> String.fromFloat)
                 , Svg.Attributes.fontFamily "monospace"
                 , Svg.Attributes.textAnchor "middle"
                 , Svg.Attributes.dominantBaseline "middle"
                 ]
                 [ Svg.text (card.rank |> Rank.toString) ]
+            , Svg.g [ Svg.Attributes.transform "scale(0.16) translate(35,35)" ] [ icon "black" "0.5" ]
             ]
         ]
 
