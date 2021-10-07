@@ -34,7 +34,6 @@ import Json.Decode.Pipeline as P
 import Keyboard exposing (RawKey)
 import List.Extra
 import Maybe.Extra
-import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.Combo as Combo exposing (Combo)
 import Poker.Hand as Hand exposing (Hand)
@@ -46,6 +45,7 @@ import Poker.Suit as Suit exposing (Suit(..))
 import Ports exposing (CopiedToClipboardMsg, SharingType(..))
 import Process
 import RangeCellSelectState exposing (RangeCellSelectState)
+import RangesForm exposing (RangesForm)
 import RemoteData exposing (WebData)
 import Result.Extra
 import Round
@@ -59,69 +59,6 @@ import Url exposing (Url)
 import Url.Builder
 import Url.Parser as UrlParser exposing ((<?>), Parser)
 import Url.Parser.Query as Query
-
-
-type alias SimulationRequestForm =
-    { utg : Form.Field (List HandOrCombo)
-    , mp : Form.Field (List HandOrCombo)
-    , co : Form.Field (List HandOrCombo)
-    , bu : Form.Field (List HandOrCombo)
-    , sb : Form.Field (List HandOrCombo)
-    , bb : Form.Field (List HandOrCombo)
-    , board : Form.Field (List Card)
-    }
-
-
-setBoard : String -> SimulationRequestForm -> SimulationRequestForm
-setBoard board form =
-    { form | board = form.board |> Form.setValue Board.validate board }
-
-
-setRange : Position -> String -> SimulationRequestForm -> SimulationRequestForm
-setRange position range form =
-    case position of
-        UTG ->
-            { form | utg = form.utg |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
-
-        MP ->
-            { form | mp = form.mp |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
-
-        CO ->
-            { form | co = form.co |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
-
-        BU ->
-            { form | bu = form.bu |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
-
-        SB ->
-            { form | sb = form.sb |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
-
-        BB ->
-            { form | bb = form.bb |> Form.setValue HandOrCombo.parseAsCononicalHandsOrCombos range }
-
-
-initialForm : SimulationRequestForm
-initialForm =
-    { utg = { name = "UTG", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
-    , mp = { name = "MP", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
-    , co = { name = "CO", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
-    , bu = { name = "BU", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
-    , sb = { name = "SB", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
-    , bb = { name = "BB", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
-    , board = { name = "Board", value = "", validated = Ok [], edited = False }
-    }
-
-
-setAllFormFieldsToEdited : SimulationRequestForm -> SimulationRequestForm
-setAllFormFieldsToEdited form =
-    { form
-        | utg = form.utg |> Form.setEdited
-        , mp = form.mp |> Form.setEdited
-        , co = form.co |> Form.setEdited
-        , bu = form.bu |> Form.setEdited
-        , sb = form.sb |> Form.setEdited
-        , bb = form.bb |> Form.setEdited
-        , board = form.board |> Form.setEdited
-    }
 
 
 type Mouse
@@ -173,7 +110,7 @@ initialSharingPopoverStates =
 
 type alias Model =
     { navKey : Navigation.Key
-    , simulationRequestForm : SimulationRequestForm
+    , form : RangesForm
     , currentApiResponse : WebData SimulationResult
     , results : List ( SharingPopoverStates, Url, SimulationResult )
     , boardSelectModalVisibility : Modal.Visibility
@@ -264,7 +201,7 @@ init flags url key =
         baseUrl =
             Decode.decodeValue Decode.string flags |> Result.toMaybe
     in
-    { simulationRequestForm = maybeForm |> Maybe.withDefault initialForm
+    { form = maybeForm |> Maybe.withDefault RangesForm.initialForm
     , currentApiResponse = RemoteData.NotAsked
     , results = []
     , boardSelectModalVisibility = Modal.hidden
@@ -378,12 +315,12 @@ handleApiResponse model result =
             result
                 |> RemoteData.map
                     (\res ->
-                        [ ( model.simulationRequestForm.utg.validated |> Result.withDefault [], UTG )
-                        , ( model.simulationRequestForm.mp.validated |> Result.withDefault [], MP )
-                        , ( model.simulationRequestForm.co.validated |> Result.withDefault [], CO )
-                        , ( model.simulationRequestForm.bu.validated |> Result.withDefault [], BU )
-                        , ( model.simulationRequestForm.sb.validated |> Result.withDefault [], SB )
-                        , ( model.simulationRequestForm.bb.validated |> Result.withDefault [], BB )
+                        [ ( RangesForm.range UTG model.form, UTG )
+                        , ( RangesForm.range MP model.form, MP )
+                        , ( RangesForm.range CO model.form, CO )
+                        , ( RangesForm.range BU model.form, BU )
+                        , ( RangesForm.range SB model.form, SB )
+                        , ( RangesForm.range BB model.form, BB )
                         ]
                             |> List.filter (\( r, _ ) -> not <| List.isEmpty r)
                             |> List.map2 (\e ( r, p ) -> ( p, r, e ))
@@ -399,7 +336,7 @@ handleApiResponse model result =
                             |> List.foldl
                                 updateSimulationResult
                                 (SimulationResult
-                                    (model.simulationRequestForm.board.validated |> Result.withDefault [])
+                                    (RangesForm.board model.form)
                                     Nothing
                                     Nothing
                                     Nothing
@@ -417,14 +354,14 @@ handleApiResponse model result =
     )
 
 
-rangesFromForm : SimulationRequestForm -> List (List HandOrCombo)
-rangesFromForm simulationRequestForm =
-    [ simulationRequestForm.utg.validated
-    , simulationRequestForm.mp.validated
-    , simulationRequestForm.co.validated
-    , simulationRequestForm.bu.validated
-    , simulationRequestForm.sb.validated
-    , simulationRequestForm.bb.validated
+rangesFromForm : RangesForm -> List (List HandOrCombo)
+rangesFromForm form =
+    [ (RangesForm.rangeField UTG form).validated
+    , (RangesForm.rangeField MP form).validated
+    , (RangesForm.rangeField CO form).validated
+    , (RangesForm.rangeField BU form).validated
+    , (RangesForm.rangeField SB form).validated
+    , (RangesForm.rangeField BB form).validated
     ]
         |> List.map Result.toMaybe
         |> Maybe.Extra.values
@@ -433,33 +370,21 @@ rangesFromForm simulationRequestForm =
 
 sendSimulationRequest : Model -> ( Model, Cmd Msg )
 sendSimulationRequest model =
-    if validateForm model.simulationRequestForm |> Result.Extra.isErr then
-        ( { model | simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm }
+    if RangesForm.validateForm model.form |> Result.Extra.isErr then
+        ( { model | form = RangesForm.setAllFormFieldsToEdited model.form }
         , Cmd.none
         )
 
-    else if (rangesFromForm model.simulationRequestForm |> List.length) < 2 then
+    else if (rangesFromForm model.form |> List.length) < 2 then
         ( model, Cmd.none )
 
     else
         ( { model
             | currentApiResponse = RemoteData.Loading
-            , simulationRequestForm = setAllFormFieldsToEdited model.simulationRequestForm
+            , form = RangesForm.setAllFormFieldsToEdited model.form
           }
-        , sendSimulationRequestHttp model.simulationApibaseUrl (model.simulationRequestForm.board.validated |> Result.withDefault []) (rangesFromForm model.simulationRequestForm)
+        , sendSimulationRequestHttp model.simulationApibaseUrl (RangesForm.board model.form) (rangesFromForm model.form)
         )
-
-
-validateForm : SimulationRequestForm -> Result (List String) SimulationRequestForm
-validateForm form =
-    Ok (\_ _ _ _ _ _ _ -> form)
-        |> Form.apply (form.utg.validated |> Result.Extra.mapBoth (always [ "The UTG range is not a valid range." ]) identity)
-        |> Form.apply (form.mp.validated |> Result.Extra.mapBoth (always [ "The MP range is not a valid range." ]) identity)
-        |> Form.apply (form.co.validated |> Result.Extra.mapBoth (always [ "The CO range is not a valid range." ]) identity)
-        |> Form.apply (form.bu.validated |> Result.Extra.mapBoth (always [ "The BU range is not a valid range." ]) identity)
-        |> Form.apply (form.sb.validated |> Result.Extra.mapBoth (always [ "The SB range is not a valid range." ]) identity)
-        |> Form.apply (form.bb.validated |> Result.Extra.mapBoth (always [ "The BB range is not a valid range." ]) identity)
-        |> Form.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board." ]) identity)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -477,7 +402,7 @@ update msg model =
             Cmd.none
                 |> Tuple.pair
                     { model
-                        | simulationRequestForm = UrlParser.parse urlParser url |> Maybe.withDefault initialForm
+                        | form = UrlParser.parse urlParser url |> Maybe.withDefault RangesForm.initialForm
                         , boardSelectModalVisibility = Modal.hidden
                         , rangeSelectionModalVisibility = Modal.hidden
                         , boardSelection = []
@@ -501,7 +426,7 @@ update msg model =
 
         RangeInput position str ->
             ( { model
-                | simulationRequestForm = setRange position str model.simulationRequestForm
+                | form = RangesForm.setRange position str model.form
                 , currentApiResponse = RemoteData.NotAsked
               }
             , Cmd.none
@@ -509,14 +434,14 @@ update msg model =
 
         BoardInput str ->
             ( { model
-                | simulationRequestForm = setBoard str model.simulationRequestForm
+                | form = RangesForm.setBoard str model.form
                 , currentApiResponse = RemoteData.NotAsked
               }
             , Cmd.none
             )
 
         RewriteRange position ->
-            ( { model | simulationRequestForm = rewrite position model.simulationRequestForm }, Cmd.none )
+            ( { model | form = RangesForm.rewrite position model.form }, Cmd.none )
 
         CloseBoardSelectModal ->
             ( { model | boardSelectModalVisibility = Modal.hidden }
@@ -524,7 +449,7 @@ update msg model =
             )
 
         ShowBoardSelectModal ->
-            ( { model | boardSelectModalVisibility = Modal.shown, boardSelection = model.simulationRequestForm.board.validated |> Result.withDefault [] }
+            ( { model | boardSelectModalVisibility = Modal.shown, boardSelection = RangesForm.board model.form }
             , Cmd.none
             )
 
@@ -572,30 +497,9 @@ update msg model =
             ( { model | boardSelection = [] }, Cmd.none )
 
         ShowRangeSelectionModal position ->
-            let
-                range =
-                    case position of
-                        UTG ->
-                            model.simulationRequestForm.utg.validated |> Result.withDefault []
-
-                        MP ->
-                            model.simulationRequestForm.mp.validated |> Result.withDefault []
-
-                        CO ->
-                            model.simulationRequestForm.co.validated |> Result.withDefault []
-
-                        BU ->
-                            model.simulationRequestForm.bu.validated |> Result.withDefault []
-
-                        SB ->
-                            model.simulationRequestForm.sb.validated |> Result.withDefault []
-
-                        BB ->
-                            model.simulationRequestForm.bb.validated |> Result.withDefault []
-            in
             ( { model
                 | rangeSelectionModalVisibility = Modal.shown
-                , rangeSelection = range |> List.concatMap HandOrCombo.combos
+                , rangeSelection = RangesForm.range position model.form |> List.concatMap HandOrCombo.combos
                 , rangeSelectionPosition = position
                 , slider = initialRangeSlider
               }
@@ -697,7 +601,7 @@ update msg model =
 
         SelectPresetRange position range ->
             ( { model
-                | simulationRequestForm = setRange position range model.simulationRequestForm |> rewrite position
+                | form = RangesForm.setRange position range model.form |> RangesForm.rewrite position
                 , currentApiResponse = RemoteData.NotAsked
               }
             , Cmd.none
@@ -727,7 +631,7 @@ update msg model =
                     ( model, Cmd.none )
 
         RemoveRange position ->
-            ( { model | simulationRequestForm = setRange position "" model.simulationRequestForm }, Cmd.none )
+            ( { model | form = RangesForm.setRange position "" model.form }, Cmd.none )
 
         NotifyCopyToClipboard (Err _) ->
             ( model, Cmd.none )
@@ -768,7 +672,7 @@ update msg model =
             )
 
         RemoveBoard ->
-            ( { model | simulationRequestForm = setBoard "" model.simulationRequestForm }, Cmd.none )
+            ( { model | form = RangesForm.setBoard "" model.form }, Cmd.none )
 
         PopoverStateSelectRange position state ->
             Cmd.none |> Tuple.pair (updatePopoverState (\s -> { s | rangeSelect = state }) position model)
@@ -937,43 +841,16 @@ toggleHandSelection hand model =
     }
 
 
-rewriteBoard : SimulationRequestForm -> SimulationRequestForm
-rewriteBoard form =
-    { form | board = Form.rewrite form.board (List.map Card.toString >> String.concat) }
-
-
-rewrite : Position -> SimulationRequestForm -> SimulationRequestForm
-rewrite position form =
-    case position of
-        UTG ->
-            { form | utg = Form.rewrite form.utg HandOrCombo.toNormalizedString }
-
-        MP ->
-            { form | mp = Form.rewrite form.mp HandOrCombo.toNormalizedString }
-
-        CO ->
-            { form | co = Form.rewrite form.co HandOrCombo.toNormalizedString }
-
-        BU ->
-            { form | bu = Form.rewrite form.bu HandOrCombo.toNormalizedString }
-
-        SB ->
-            { form | sb = Form.rewrite form.sb HandOrCombo.toNormalizedString }
-
-        BB ->
-            { form | bb = Form.rewrite form.bb HandOrCombo.toNormalizedString }
-
-
 confirmRangeSelection : Position -> Model -> ( Model, Cmd Msg )
 confirmRangeSelection position model =
     let
         form =
-            setRange position (model.rangeSelection |> List.map HandOrCombo.fromCombo |> HandOrCombo.toNormalizedString) model.simulationRequestForm
-                |> rewrite position
+            RangesForm.setRange position (model.rangeSelection |> List.map HandOrCombo.fromCombo |> HandOrCombo.toNormalizedString) model.form
+                |> RangesForm.rewrite position
     in
     ( { model
         | rangeSelectionModalVisibility = Modal.hidden
-        , simulationRequestForm = form
+        , form = form
         , rangeSelection = []
         , suitSelection = Nothing
         , currentApiResponse = RemoteData.NotAsked
@@ -990,7 +867,7 @@ toSimulationRequestForm :
     -> Maybe String
     -> Maybe String
     -> Maybe String
-    -> SimulationRequestForm
+    -> RangesForm
 toSimulationRequestForm maybeUtg maybeMp maybeCo maybeBu maybeSb maybeBb maybeBaord =
     let
         set f maybe form =
@@ -1001,24 +878,24 @@ toSimulationRequestForm maybeUtg maybeMp maybeCo maybeBu maybeSb maybeBb maybeBa
                 Nothing ->
                     form
     in
-    initialForm
-        |> set (setRange UTG) maybeUtg
-        |> rewrite UTG
-        |> set (setRange MP) maybeMp
-        |> rewrite MP
-        |> set (setRange CO) maybeCo
-        |> rewrite CO
-        |> set (setRange BU) maybeBu
-        |> rewrite BU
-        |> set (setRange SB) maybeSb
-        |> rewrite SB
-        |> set (setRange BB) maybeBb
-        |> rewrite BB
-        |> set setBoard maybeBaord
-        |> rewriteBoard
+    RangesForm.initialForm
+        |> set (RangesForm.setRange UTG) maybeUtg
+        |> RangesForm.rewrite UTG
+        |> set (RangesForm.setRange MP) maybeMp
+        |> RangesForm.rewrite MP
+        |> set (RangesForm.setRange CO) maybeCo
+        |> RangesForm.rewrite CO
+        |> set (RangesForm.setRange BU) maybeBu
+        |> RangesForm.rewrite BU
+        |> set (RangesForm.setRange SB) maybeSb
+        |> RangesForm.rewrite SB
+        |> set (RangesForm.setRange BB) maybeBb
+        |> RangesForm.rewrite BB
+        |> set RangesForm.setBoard maybeBaord
+        |> RangesForm.rewriteBoard
 
 
-urlParser : Parser (SimulationRequestForm -> a) a
+urlParser : Parser (RangesForm -> a) a
 urlParser =
     UrlParser.map toSimulationRequestForm
         (UrlParser.top
@@ -1034,18 +911,18 @@ urlParser =
 
 updateUrl : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 updateUrl ( model, cmd ) =
-    if model.simulationRequestForm |> validateForm |> Result.Extra.isOk then
+    if model.form |> RangesForm.validateForm |> Result.Extra.isOk then
         Cmd.batch
             [ cmd
             , Navigation.pushUrl model.navKey
                 (Url.Builder.absolute []
-                    (rangeQueryParameter UTG model.simulationRequestForm.utg
-                        ++ rangeQueryParameter MP model.simulationRequestForm.mp
-                        ++ rangeQueryParameter CO model.simulationRequestForm.co
-                        ++ rangeQueryParameter BU model.simulationRequestForm.bu
-                        ++ rangeQueryParameter SB model.simulationRequestForm.sb
-                        ++ rangeQueryParameter BB model.simulationRequestForm.bb
-                        ++ boardQueryParameter model.simulationRequestForm.board
+                    (rangeQueryParameter UTG (RangesForm.rangeField UTG model.form)
+                        ++ rangeQueryParameter MP (RangesForm.rangeField MP model.form)
+                        ++ rangeQueryParameter CO (RangesForm.rangeField CO model.form)
+                        ++ rangeQueryParameter BU (RangesForm.rangeField BU model.form)
+                        ++ rangeQueryParameter SB (RangesForm.rangeField SB model.form)
+                        ++ rangeQueryParameter BB (RangesForm.rangeField BB model.form)
+                        ++ boardQueryParameter (RangesForm.boardField model.form)
                     )
                 )
             ]
@@ -1085,7 +962,7 @@ confirmBoardSelection : Model -> ( Model, Cmd Msg )
 confirmBoardSelection model =
     ( { model
         | boardSelectModalVisibility = Modal.hidden
-        , simulationRequestForm = setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.simulationRequestForm
+        , form = RangesForm.setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.form
         , boardSelection = []
         , currentApiResponse = RemoteData.NotAsked
       }
@@ -1315,27 +1192,27 @@ cardView msg selectState cursor refWidth card =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ rangeInputView (popoverState UTG model) UTG model.simulationRequestForm.utg (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Ranges.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState MP model) MP model.simulationRequestForm.mp (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Ranges.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState CO model) CO model.simulationRequestForm.co (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Ranges.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState BU model) BU model.simulationRequestForm.bu (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Ranges.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState SB model) SB model.simulationRequestForm.sb (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Ranges.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (popoverState BB model) BB model.simulationRequestForm.bb (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Ranges.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
+        [ rangeInputView (popoverState UTG model) UTG (RangesForm.rangeField UTG model.form) (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Ranges.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState MP model) MP (RangesForm.rangeField MP model.form) (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Ranges.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState CO model) CO (RangesForm.rangeField CO model.form) (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Ranges.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState BU model) BU (RangesForm.rangeField BU model.form) (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Ranges.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState SB model) SB (RangesForm.rangeField SB model.form) (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Ranges.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView (popoverState BB model) BB (RangesForm.rangeField BB model.form) (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Ranges.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
         , Form.row
             []
             [ Form.col [ Col.sm10 ]
                 [ Form.group []
-                    [ Form.label [] [ Html.text model.simulationRequestForm.board.name ]
+                    [ Form.label [] [ Html.text (RangesForm.boardField model.form).name ]
                     , InputGroup.config
                         (InputGroup.text
-                            (validationFeedbackOutline model.simulationRequestForm.board
-                                ++ [ Input.value model.simulationRequestForm.board.value
+                            (validationFeedbackOutline (RangesForm.boardField model.form)
+                                ++ [ Input.value (RangesForm.boardField model.form).value
                                    , Input.onInput BoardInput
                                    ]
                             )
                         )
                         |> InputGroup.attrs
-                            (if model.simulationRequestForm.board.validated |> Result.Extra.isOk then
+                            (if (RangesForm.boardField model.form).validated |> Result.Extra.isOk then
                                 [ Html.Attributes.class "is-valid" ]
 
                              else
@@ -1363,7 +1240,7 @@ inputFormView model =
                                             [ Button.outlineSecondary
                                             , Button.attrs [ Html.Attributes.tabindex -1 ]
                                             , Button.onClick RemoveBoard
-                                            , Button.disabled (model.simulationRequestForm.board.value |> String.isEmpty)
+                                            , Button.disabled ((RangesForm.boardField model.form).value |> String.isEmpty)
                                             ]
                                             [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [] ]
                                         ]
@@ -1379,12 +1256,12 @@ inputFormView model =
                     ]
                 ]
             ]
-        , if model.simulationRequestForm.board.validated == Ok [] then
+        , if (RangesForm.boardField model.form).validated == Ok [] then
             Html.text ""
 
           else
-            Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ Button.button [ Button.light, Button.onClick ShowBoardSelectModal ] [ boardView True "pointer" "6vw" (model.simulationRequestForm.board.validated |> Result.withDefault []) ] ] ]
-        , if (rangesFromForm model.simulationRequestForm |> List.length) < 2 then
+            Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ Button.button [ Button.light, Button.onClick ShowBoardSelectModal ] [ boardView True "pointer" "6vw" (RangesForm.board model.form) ] ] ]
+        , if (rangesFromForm model.form |> List.length) < 2 then
             Alert.simpleInfo [ Spacing.mt2 ] [ Html.text "You must fill in at least 2 ranges." ]
 
           else
@@ -1419,12 +1296,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                     [ Html.text field.name ]
                  , InputGroup.config
                     (InputGroup.text
-                        ((if field.validated == Ok [] then
-                            []
-
-                          else
-                            validationFeedbackOutline field
-                         )
+                        (validationFeedbackOutline field
                             ++ [ Input.value field.value
                                , Input.onInput (RangeInput position)
                                ]
@@ -1479,7 +1351,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                                     [ Button.button
                                         [ Button.outlineSecondary
                                         , Button.onClick (RewriteRange position)
-                                        , Button.disabled (rewritable field |> not)
+                                        , Button.disabled (RangesForm.rewritable field |> not)
                                         , Button.attrs [ Html.Attributes.tabindex -1 ]
                                         ]
                                         [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
@@ -1544,13 +1416,6 @@ numberOfCombosView ranges =
             , Html.text (((HandOrCombo.percentage ranges * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((HandOrCombo.numberOfCombos ranges |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
             ]
         ]
-
-
-rewritable : Form.Field (List HandOrCombo) -> Bool
-rewritable field =
-    field.value
-        /= (field.validated |> Result.withDefault [] |> HandOrCombo.toNormalizedString)
-        && (field.validated |> Result.Extra.isOk)
 
 
 boardCardView : String -> String -> Card -> Html Msg
@@ -1817,7 +1682,7 @@ rangeSelectionModalView model =
                         ]
                     ]
                 , Grid.col []
-                    ((case model.simulationRequestForm.board.validated |> Result.withDefault [] of
+                    ((case RangesForm.board model.form of
                         [] ->
                             []
 
