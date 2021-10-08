@@ -1,4 +1,6 @@
-module RangeCellSelectState exposing (RangeCellSelectState(..))
+module View.RangeCellSelectState exposing (RangeCellSelectState(..))
+
+-- move to view
 
 
 type RangeCellSelectState

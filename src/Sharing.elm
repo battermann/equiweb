@@ -1,11 +1,11 @@
 module Sharing exposing (markdown, pokerStrategy, twoPlusTwo)
 
 import Maybe.Extra
+import Model exposing (ResultLine, SimulationResult)
 import Poker.Card as Card exposing (Card)
 import Poker.HandOrCombo as Range
 import Poker.Position as Position exposing (Position(..))
 import Round
-import SimulationResult exposing (ResultLine, SimulationResult)
 import Url exposing (Url)
 
 

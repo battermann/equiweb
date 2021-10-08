@@ -5,6 +5,7 @@ module RangesForm exposing
     , initialForm
     , range
     , rangeField
+    , ranges
     , rewritable
     , rewrite
     , rewriteBoard
@@ -15,6 +16,7 @@ module RangesForm exposing
     )
 
 import Form
+import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
@@ -186,3 +188,17 @@ validateForm (RangesForm form) =
         |> Form.apply (form.sb.validated |> Result.Extra.mapBoth (always [ "The SB range is not a valid range." ]) identity)
         |> Form.apply (form.bb.validated |> Result.Extra.mapBoth (always [ "The BB range is not a valid range." ]) identity)
         |> Form.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board." ]) identity)
+
+
+ranges : RangesForm -> List (List HandOrCombo)
+ranges form =
+    [ (rangeField UTG form).validated
+    , (rangeField MP form).validated
+    , (rangeField CO form).validated
+    , (rangeField BU form).validated
+    , (rangeField SB form).validated
+    , (rangeField BB form).validated
+    ]
+        |> List.map Result.toMaybe
+        |> Maybe.Extra.values
+        |> List.filter (not << List.isEmpty)
