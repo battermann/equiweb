@@ -1,4 +1,4 @@
-module Icons exposing (club, diamond, heart, spade)
+module Views.Icons exposing (club, diamond, heart, spade)
 
 import Svg exposing (Svg)
 import Svg.Attributes
