@@ -1,4 +1,4 @@
-module Requests exposing (sendSimulationRequest)
+module Api exposing (sendSimulationRequest)
 
 import Http
 import Json.Decode as Decode

@@ -3,7 +3,8 @@ module Main exposing (main)
 import Browser
 import Json.Decode as Decode
 import Model exposing (Model, Msg(..), init)
-import State exposing (sendSimulationRequest, subscriptions, update)
+import Subscriptions exposing (subscriptions)
+import Update exposing (sendSimulationRequest, update)
 import View exposing (view)
 
 

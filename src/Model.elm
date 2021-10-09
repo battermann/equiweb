@@ -21,6 +21,7 @@ import Bootstrap.Dropdown as Dropdown
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Navigation
 import DoubleSlider as Slider
+import Form exposing (RangesForm)
 import Json.Decode as Decode exposing (Error)
 import Keyboard exposing (RawKey)
 import Poker.Card exposing (Card)
@@ -30,7 +31,6 @@ import Poker.HandOrCombo exposing (HandOrCombo)
 import Poker.Position exposing (Position(..))
 import Poker.Suit as Suit exposing (Suit(..))
 import Ports exposing (CopiedToClipboardMsg, SharingType(..))
-import RangesForm exposing (RangesForm)
 import RemoteData exposing (WebData)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing ((<?>), Parser)
@@ -138,28 +138,6 @@ type alias Model =
     }
 
 
-popoverState : Position -> Model -> PopoverStates
-popoverState position model =
-    case position of
-        UTG ->
-            model.popoverStateUtg
-
-        MP ->
-            model.popoverStateMp
-
-        CO ->
-            model.popoverStateCo
-
-        BU ->
-            model.popoverStateBu
-
-        SB ->
-            model.popoverStateSb
-
-        BB ->
-            model.popoverStateBb
-
-
 initialRangeSlider : Slider.DoubleSlider Msg
 initialRangeSlider =
     Slider.init
@@ -182,7 +160,7 @@ init send flags url key =
         baseUrl =
             Decode.decodeValue Decode.string flags |> Result.toMaybe
     in
-    { form = maybeForm |> Maybe.withDefault RangesForm.initialForm
+    { form = maybeForm |> Maybe.withDefault Form.initialForm
     , currentApiResponse = RemoteData.NotAsked
     , results = []
     , boardSelectModalVisibility = Modal.hidden
@@ -292,21 +270,21 @@ urlParser =
                         Nothing ->
                             form
             in
-            RangesForm.initialForm
-                |> set (RangesForm.setRange UTG) maybeUtg
-                |> RangesForm.rewrite UTG
-                |> set (RangesForm.setRange MP) maybeMp
-                |> RangesForm.rewrite MP
-                |> set (RangesForm.setRange CO) maybeCo
-                |> RangesForm.rewrite CO
-                |> set (RangesForm.setRange BU) maybeBu
-                |> RangesForm.rewrite BU
-                |> set (RangesForm.setRange SB) maybeSb
-                |> RangesForm.rewrite SB
-                |> set (RangesForm.setRange BB) maybeBb
-                |> RangesForm.rewrite BB
-                |> set RangesForm.setBoard maybeBaord
-                |> RangesForm.rewriteBoard
+            Form.initialForm
+                |> set (Form.setRange UTG) maybeUtg
+                |> Form.rewrite UTG
+                |> set (Form.setRange MP) maybeMp
+                |> Form.rewrite MP
+                |> set (Form.setRange CO) maybeCo
+                |> Form.rewrite CO
+                |> set (Form.setRange BU) maybeBu
+                |> Form.rewrite BU
+                |> set (Form.setRange SB) maybeSb
+                |> Form.rewrite SB
+                |> set (Form.setRange BB) maybeBb
+                |> Form.rewrite BB
+                |> set Form.setBoard maybeBaord
+                |> Form.rewriteBoard
     in
     UrlParser.map toForm
         (UrlParser.top
@@ -318,3 +296,25 @@ urlParser =
             <?> Query.string "bb"
             <?> Query.string "board"
         )
+
+
+popoverState : Position -> Model -> PopoverStates
+popoverState position model =
+    case position of
+        UTG ->
+            model.popoverStateUtg
+
+        MP ->
+            model.popoverStateMp
+
+        CO ->
+            model.popoverStateCo
+
+        BU ->
+            model.popoverStateBu
+
+        SB ->
+            model.popoverStateSb
+
+        BB ->
+            model.popoverStateBb

@@ -1,13 +1,12 @@
-module State exposing (sendSimulationRequest, subscriptions, update)
+module Update exposing (sendSimulationRequest, update)
 
+import Api
 import Bootstrap.Alt.Modal as Modal
 import Bootstrap.Alt.Popover as Popover
-import Bootstrap.Dropdown as Dropdown
 import Browser
-import Browser.Events
 import Browser.Navigation as Navigation
 import DoubleSlider as Slider
-import Json.Decode as Decode
+import Form
 import Keyboard
 import List.Extra
 import Maybe.Extra
@@ -19,11 +18,9 @@ import Poker.HandOrCombo as HandOrCombo
 import Poker.Position as Position exposing (Position(..))
 import Poker.Suit as Suit exposing (Suit(..))
 import Ports exposing (SharingType(..))
-import RangesForm
 import RemoteData exposing (WebData)
-import Requests
 import Result.Extra
-import Sharing
+import ResultFormatter
 import Url
 import Url.Builder
 import Url.Parser as UrlParser
@@ -44,7 +41,7 @@ update msg model =
             Cmd.none
                 |> Tuple.pair
                     { model
-                        | form = UrlParser.parse Model.urlParser url |> Maybe.withDefault RangesForm.initialForm
+                        | form = UrlParser.parse Model.urlParser url |> Maybe.withDefault Form.initialForm
                         , boardSelectModalVisibility = Modal.hidden
                         , rangeSelectionModalVisibility = Modal.hidden
                         , boardSelection = []
@@ -68,7 +65,7 @@ update msg model =
 
         RangeInput position str ->
             ( { model
-                | form = RangesForm.setRange position str model.form
+                | form = Form.setRange position str model.form
                 , currentApiResponse = RemoteData.NotAsked
               }
             , Cmd.none
@@ -76,14 +73,14 @@ update msg model =
 
         BoardInput str ->
             ( { model
-                | form = RangesForm.setBoard str model.form
+                | form = Form.setBoard str model.form
                 , currentApiResponse = RemoteData.NotAsked
               }
             , Cmd.none
             )
 
         RewriteRange position ->
-            ( { model | form = RangesForm.rewrite position model.form }, Cmd.none )
+            ( { model | form = Form.rewrite position model.form }, Cmd.none )
 
         CloseBoardSelectModal ->
             ( { model | boardSelectModalVisibility = Modal.hidden }
@@ -91,7 +88,7 @@ update msg model =
             )
 
         ShowBoardSelectModal ->
-            ( { model | boardSelectModalVisibility = Modal.shown, boardSelection = RangesForm.board model.form }
+            ( { model | boardSelectModalVisibility = Modal.shown, boardSelection = Form.board model.form }
             , Cmd.none
             )
 
@@ -141,7 +138,7 @@ update msg model =
         ShowRangeSelectionModal position ->
             ( { model
                 | rangeSelectionModalVisibility = Modal.shown
-                , rangeSelection = RangesForm.range position model.form |> List.concatMap HandOrCombo.combos
+                , rangeSelection = Form.range position model.form |> List.concatMap HandOrCombo.combos
                 , rangeSelectionPosition = position
                 , slider = Model.initialRangeSlider
               }
@@ -243,7 +240,7 @@ update msg model =
 
         SelectPresetRange position range ->
             ( { model
-                | form = RangesForm.setRange position range model.form |> RangesForm.rewrite position
+                | form = Form.setRange position range model.form |> Form.rewrite position
                 , currentApiResponse = RemoteData.NotAsked
               }
             , Cmd.none
@@ -257,13 +254,13 @@ update msg model =
                             model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map (\( _, url, _ ) -> Url.toString url)
 
                         Markdown ->
-                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.markdown model.location)
+                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> ResultFormatter.markdown model.location)
 
                         TwoPlusTwo ->
-                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.twoPlusTwo model.location)
+                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> ResultFormatter.twoPlusTwo model.location)
 
                         PokerStrategy ->
-                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> Sharing.pokerStrategy model.location)
+                            model.results |> List.reverse |> List.Extra.getAt index |> Maybe.map ((\( _, _, r ) -> r) >> ResultFormatter.pokerStrategy model.location)
             in
             case maybeText of
                 Just text ->
@@ -273,7 +270,7 @@ update msg model =
                     ( model, Cmd.none )
 
         RemoveRange position ->
-            ( { model | form = RangesForm.setRange position "" model.form }, Cmd.none )
+            ( { model | form = Form.setRange position "" model.form }, Cmd.none )
 
         NotifyCopyToClipboard (Err _) ->
             ( model, Cmd.none )
@@ -314,7 +311,7 @@ update msg model =
             )
 
         RemoveBoard ->
-            ( { model | form = RangesForm.setBoard "" model.form }, Cmd.none )
+            ( { model | form = Form.setBoard "" model.form }, Cmd.none )
 
         PopoverStateSelectRange position state ->
             Cmd.none |> Tuple.pair (updatePopoverState (\s -> { s | rangeSelect = state }) position model)
@@ -418,7 +415,7 @@ update msg model =
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )
-handleApiResponse model result =
+handleApiResponse model response =
     let
         updateSimulationResult ( position, range, equity ) simulationResult =
             case position of
@@ -441,15 +438,15 @@ handleApiResponse model result =
                     { simulationResult | bb = Just (ResultLine range equity) }
 
         sr =
-            result
+            response
                 |> RemoteData.map
                     (\res ->
-                        [ ( RangesForm.range UTG model.form, UTG )
-                        , ( RangesForm.range MP model.form, MP )
-                        , ( RangesForm.range CO model.form, CO )
-                        , ( RangesForm.range BU model.form, BU )
-                        , ( RangesForm.range SB model.form, SB )
-                        , ( RangesForm.range BB model.form, BB )
+                        [ ( Form.range UTG model.form, UTG )
+                        , ( Form.range MP model.form, MP )
+                        , ( Form.range CO model.form, CO )
+                        , ( Form.range BU model.form, BU )
+                        , ( Form.range SB model.form, SB )
+                        , ( Form.range BB model.form, BB )
                         ]
                             |> List.filter (\( r, _ ) -> not <| List.isEmpty r)
                             |> List.map2 (\e ( r, p ) -> ( p, r, e ))
@@ -465,7 +462,7 @@ handleApiResponse model result =
                             |> List.foldl
                                 updateSimulationResult
                                 (SimulationResult
-                                    (RangesForm.board model.form)
+                                    (Form.board model.form)
                                     Nothing
                                     Nothing
                                     Nothing
@@ -485,20 +482,17 @@ handleApiResponse model result =
 
 sendSimulationRequest : Model -> ( Model, Cmd Msg )
 sendSimulationRequest model =
-    if RangesForm.validateForm model.form |> Result.Extra.isErr then
-        ( { model | form = RangesForm.setAllFormFieldsToEdited model.form }
-        , Cmd.none
-        )
+    if Form.validateForm model.form |> Result.Extra.isErr then
+        ( model, Cmd.none )
 
-    else if (RangesForm.ranges model.form |> List.length) < 2 then
+    else if (Form.ranges model.form |> List.length) < 2 then
         ( model, Cmd.none )
 
     else
         ( { model
             | currentApiResponse = RemoteData.Loading
-            , form = RangesForm.setAllFormFieldsToEdited model.form
           }
-        , Requests.sendSimulationRequest model.simulationApibaseUrl (RangesForm.board model.form) (RangesForm.ranges model.form)
+        , Api.sendSimulationRequest model.simulationApibaseUrl (Form.board model.form) (Form.ranges model.form)
         )
 
 
@@ -572,8 +566,8 @@ confirmRangeSelection : Position -> Model -> ( Model, Cmd Msg )
 confirmRangeSelection position model =
     let
         form =
-            RangesForm.setRange position (model.rangeSelection |> List.map HandOrCombo.fromCombo |> HandOrCombo.toNormalizedString) model.form
-                |> RangesForm.rewrite position
+            Form.setRange position (model.rangeSelection |> List.map HandOrCombo.fromCombo |> HandOrCombo.toNormalizedString) model.form
+                |> Form.rewrite position
     in
     ( { model
         | rangeSelectionModalVisibility = Modal.hidden
@@ -611,18 +605,18 @@ updateUrl ( model, cmd ) =
                 Ok cards ->
                     [ Url.Builder.string "board" (cards |> List.map Card.toString |> String.concat |> String.toLower) ]
     in
-    if model.form |> RangesForm.validateForm |> Result.Extra.isOk then
+    if model.form |> Form.validateForm |> Result.Extra.isOk then
         Cmd.batch
             [ cmd
             , Navigation.pushUrl model.navKey
                 (Url.Builder.absolute []
-                    (rangeQueryParameter UTG (RangesForm.rangeField UTG model.form)
-                        ++ rangeQueryParameter MP (RangesForm.rangeField MP model.form)
-                        ++ rangeQueryParameter CO (RangesForm.rangeField CO model.form)
-                        ++ rangeQueryParameter BU (RangesForm.rangeField BU model.form)
-                        ++ rangeQueryParameter SB (RangesForm.rangeField SB model.form)
-                        ++ rangeQueryParameter BB (RangesForm.rangeField BB model.form)
-                        ++ boardQueryParameter (RangesForm.boardField model.form)
+                    (rangeQueryParameter UTG (Form.rangeField UTG model.form)
+                        ++ rangeQueryParameter MP (Form.rangeField MP model.form)
+                        ++ rangeQueryParameter CO (Form.rangeField CO model.form)
+                        ++ rangeQueryParameter BU (Form.rangeField BU model.form)
+                        ++ rangeQueryParameter SB (Form.rangeField SB model.form)
+                        ++ rangeQueryParameter BB (Form.rangeField BB model.form)
+                        ++ boardQueryParameter (Form.boardField model.form)
                     )
                 )
             ]
@@ -636,30 +630,9 @@ confirmBoardSelection : Model -> ( Model, Cmd Msg )
 confirmBoardSelection model =
     ( { model
         | boardSelectModalVisibility = Modal.hidden
-        , form = RangesForm.setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.form
+        , form = Form.setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.form
         , boardSelection = []
         , currentApiResponse = RemoteData.NotAsked
       }
     , Cmd.none
     )
-
-
-
----- SUBSCRIPTIONS ----
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch
-        [ Keyboard.downs KeyDown
-        , Browser.Events.onMouseDown (Decode.succeed MouseDown)
-        , Browser.Events.onMouseUp (Decode.succeed MouseUp)
-        , Dropdown.subscriptions model.rangeDropdownStateUtg (RangeDropdownMsg UTG)
-        , Dropdown.subscriptions model.rangeDropdownStateMp (RangeDropdownMsg MP)
-        , Dropdown.subscriptions model.rangeDropdownStateCo (RangeDropdownMsg CO)
-        , Dropdown.subscriptions model.rangeDropdownStateBu (RangeDropdownMsg BU)
-        , Dropdown.subscriptions model.rangeDropdownStateSb (RangeDropdownMsg SB)
-        , Dropdown.subscriptions model.rangeDropdownStateBb (RangeDropdownMsg BB)
-        , Ports.notifyCopyToClipboard (Decode.decodeValue Ports.copiedToClipboardMsgDecoder >> NotifyCopyToClipboard)
-        , Dropdown.subscriptions model.rangeSelectionDropdown RangeSelectionDropdownMsg
-        ]
