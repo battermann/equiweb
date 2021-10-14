@@ -1,7 +1,7 @@
 module Poker.Card exposing
     ( Card
     , all
-    , boardToString
+    , allNonEmpty
     , order
     , parser
     , toChar
@@ -23,6 +23,11 @@ type alias Card =
 all : List Card
 all =
     Suit.all |> List.Extra.andThen (\suit -> Rank.all |> List.map (\rank -> Card rank suit))
+
+
+allNonEmpty : ( Card, List Card )
+allNonEmpty =
+    ( Card Rank.Ace Suit.Clubs, all |> List.drop 1 )
 
 
 toString : Card -> String
@@ -205,22 +210,3 @@ order card1 card2 =
 
         orElse ->
             orElse
-
-
-boardToString : List Card -> String
-boardToString cards =
-    case cards of
-        [] ->
-            "Preflop"
-
-        _ :: _ :: _ :: [] ->
-            cards |> List.map toString |> String.concat
-
-        flop1 :: flop2 :: flop3 :: turn :: [] ->
-            [ toString flop1, toString flop2, toString flop3, " ", toString turn ] |> String.concat
-
-        flop1 :: flop2 :: flop3 :: turn :: river :: [] ->
-            [ toString flop1, toString flop2, toString flop3, " ", toString turn, " ", toString river ] |> String.concat
-
-        _ ->
-            ""

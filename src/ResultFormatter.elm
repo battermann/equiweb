@@ -2,6 +2,7 @@ module ResultFormatter exposing (markdown, pokerStrategy, twoPlusTwo)
 
 import Maybe.Extra
 import Model exposing (ResultLine, SimulationResult)
+import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.HandOrCombo as Range
 import Poker.Position as Position exposing (Position(..))
@@ -46,14 +47,14 @@ markdown url result =
 {{RESULT_LINES}}
 
 Powered by [Equiweb - 6 Max Hold'em Equity Simulations]({{URL}})"""
-        |> String.replace "{{BOARD}}" (result.board |> Card.boardToString)
+        |> String.replace "{{BOARD}}" (result.board |> Board.toString)
         |> String.replace "{{RESULT_LINES}}" (result |> lines |> List.map markdownResultLine |> String.join "\n")
         |> String.replace "{{URL}}" (url |> Url.toString)
 
 
 altBoard : List Card -> String
 altBoard board =
-    Card.boardToString board
+    Board.toString board
         |> String.toUpper
         |> String.replace "S" ":spade:"
         |> String.replace "C" ":club:"

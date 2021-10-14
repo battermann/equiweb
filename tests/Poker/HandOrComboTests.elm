@@ -3,14 +3,9 @@ module Poker.HandOrComboTests exposing (..)
 import Expect
 import Fuzz exposing (..)
 import List.Extra
-import Maybe.Extra
-import Poker.Card as Card exposing (Card)
-import Poker.Combo as Combo exposing (Combo)
+import Poker.Combo as Combo
+import Poker.Fuzzer as Fuzzer
 import Poker.HandOrCombo as HandOrCombo
-import Poker.Rank as Rank
-import Poker.Suit as Suit
-import Random.List
-import Shrink
 import Test exposing (..)
 import Test.Table as Table
 
@@ -21,7 +16,7 @@ rangeTests =
         [ test "combo order" <|
             \_ ->
                 Expect.equal (HandOrCombo.parseAsCononicalHandsOrCombos "4s3s,4c2c" |> Result.map HandOrCombo.toNormalizedString) (Ok "4s3s,4c2c")
-        , fuzz combosFuzzer "to normalized string and parsed to combos should be the same" <|
+        , fuzz Fuzzer.combos "to normalized string and parsed to combos should be the same" <|
             \combos ->
                 Expect.equal
                     (combos
@@ -36,6 +31,7 @@ rangeTests =
         ]
 
 
+normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginalTests : Test
 normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginalTests =
     let
         pairs =
@@ -70,10 +66,3 @@ normalizedRangeNotationParsedAndNormalizedShouldBeSameAsOriginalTests =
     Table.testTable "Normalized ranges parsed and normalized should be same as original"
         (pairs ++ suited ++ offsuited ++ combos ++ (List.Extra.cartesianProduct [ pairs, suited, offsuited, combos ] |> List.map (String.join ",")))
         (\strRange -> Expect.equal (HandOrCombo.parseAsCononicalHandsOrCombos strRange |> Result.map HandOrCombo.toNormalizedString) (Ok strRange))
-
-
-combosFuzzer : Fuzzer (List Combo)
-combosFuzzer =
-    Fuzz.custom (Random.List.shuffle Combo.all) Shrink.noShrink
-        |> Fuzz.map2 List.take
-            (Fuzz.intRange 1 Combo.total)

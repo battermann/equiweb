@@ -1,15 +1,20 @@
 module Poker.Combo exposing
     ( Combo
+    , aceOfClubsAceOfspades
     , all
     , combo
+    , contains
+    , fst
     , getOffsuit
     , getPairs
     , getSuited
+    , hasBlocker
     , isOffsuit
     , isPair
     , isSuited
     , order
     , parser
+    , snd
     , toString
     , total
     )
@@ -184,3 +189,18 @@ getSuited rank1 rank2 =
 getOffsuit : Rank -> Rank -> List Combo -> List Combo
 getOffsuit rank1 rank2 =
     List.filter (\c -> isOffsuit c && sameRanks c rank1 rank2) >> List.Extra.unique
+
+
+contains : Card -> Combo -> Bool
+contains card (Combo c1 c2) =
+    c1 == card || c2 == card
+
+
+hasBlocker : Combo -> Combo -> Bool
+hasBlocker (Combo c1 c2) c =
+    (c |> contains c1) || (c |> contains c2)
+
+
+aceOfClubsAceOfspades : Combo
+aceOfClubsAceOfspades =
+    Combo (Card Rank.Ace Suit.Clubs) (Card Rank.Ace Suit.Spades)
