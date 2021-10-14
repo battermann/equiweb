@@ -165,16 +165,16 @@ suitIconView : Suit -> Html Msg
 suitIconView suit =
     Html.img
         [ case suit of
-            Suit.Club ->
+            Suit.Clubs ->
                 Html.Attributes.src "images/playing-card-club-shape.svg"
 
             Suit.Spades ->
                 Html.Attributes.src "images/playing-card-spade-shape.svg"
 
-            Suit.Diamond ->
+            Suit.Diamonds ->
                 Html.Attributes.src "images/playing-card-diamond-shape.svg"
 
-            Suit.Heart ->
+            Suit.Hearts ->
                 Html.Attributes.src "images/playing-card-heart-shape.svg"
         , Html.Attributes.height 20
         , Html.Attributes.width 20

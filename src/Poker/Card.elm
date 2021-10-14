@@ -33,160 +33,160 @@ toString { rank, suit } =
 toChar : Card -> Char
 toChar { suit, rank } =
     case ( suit, rank ) of
-        ( Club, Two ) ->
+        ( Clubs, Two ) ->
             '🃒'
 
         ( Spades, Two ) ->
             '🂢'
 
-        ( Heart, Two ) ->
+        ( Hearts, Two ) ->
             '🂲'
 
-        ( Diamond, Two ) ->
+        ( Diamonds, Two ) ->
             '🃂'
 
-        ( Club, Three ) ->
+        ( Clubs, Three ) ->
             '🃓'
 
         ( Spades, Three ) ->
             '🂣'
 
-        ( Heart, Three ) ->
+        ( Hearts, Three ) ->
             '🂳'
 
-        ( Diamond, Three ) ->
+        ( Diamonds, Three ) ->
             '🃃'
 
-        ( Club, Four ) ->
+        ( Clubs, Four ) ->
             '🃔'
 
         ( Spades, Four ) ->
             '🂤'
 
-        ( Heart, Four ) ->
+        ( Hearts, Four ) ->
             '🂴'
 
-        ( Diamond, Four ) ->
+        ( Diamonds, Four ) ->
             '🃄'
 
-        ( Club, Five ) ->
+        ( Clubs, Five ) ->
             '🃕'
 
         ( Spades, Five ) ->
             '🂥'
 
-        ( Heart, Five ) ->
+        ( Hearts, Five ) ->
             '🂵'
 
-        ( Diamond, Five ) ->
+        ( Diamonds, Five ) ->
             '🃅'
 
-        ( Club, Six ) ->
+        ( Clubs, Six ) ->
             '🃖'
 
         ( Spades, Six ) ->
             '🂦'
 
-        ( Heart, Six ) ->
+        ( Hearts, Six ) ->
             '🂶'
 
-        ( Diamond, Six ) ->
+        ( Diamonds, Six ) ->
             '🃆'
 
-        ( Club, Seven ) ->
+        ( Clubs, Seven ) ->
             '🃗'
 
         ( Spades, Seven ) ->
             '🂧'
 
-        ( Heart, Seven ) ->
+        ( Hearts, Seven ) ->
             '🂷'
 
-        ( Diamond, Seven ) ->
+        ( Diamonds, Seven ) ->
             '🃇'
 
-        ( Club, Eight ) ->
+        ( Clubs, Eight ) ->
             '🃘'
 
         ( Spades, Eight ) ->
             '🂨'
 
-        ( Heart, Eight ) ->
+        ( Hearts, Eight ) ->
             '🂸'
 
-        ( Diamond, Eight ) ->
+        ( Diamonds, Eight ) ->
             '🃈'
 
-        ( Club, Nine ) ->
+        ( Clubs, Nine ) ->
             '🃙'
 
         ( Spades, Nine ) ->
             '🂩'
 
-        ( Heart, Nine ) ->
+        ( Hearts, Nine ) ->
             '🂹'
 
-        ( Diamond, Nine ) ->
+        ( Diamonds, Nine ) ->
             '🃉'
 
-        ( Club, Ten ) ->
+        ( Clubs, Ten ) ->
             '🃚'
 
         ( Spades, Ten ) ->
             '🂪'
 
-        ( Heart, Ten ) ->
+        ( Hearts, Ten ) ->
             '🂺'
 
-        ( Diamond, Ten ) ->
+        ( Diamonds, Ten ) ->
             '🃊'
 
-        ( Club, Jack ) ->
+        ( Clubs, Jack ) ->
             '🃛'
 
         ( Spades, Jack ) ->
             '🂫'
 
-        ( Heart, Jack ) ->
+        ( Hearts, Jack ) ->
             '🂻'
 
-        ( Diamond, Jack ) ->
+        ( Diamonds, Jack ) ->
             '🃋'
 
-        ( Club, Queen ) ->
+        ( Clubs, Queen ) ->
             '🃝'
 
         ( Spades, Queen ) ->
             '🂭'
 
-        ( Heart, Queen ) ->
+        ( Hearts, Queen ) ->
             '🂽'
 
-        ( Diamond, Queen ) ->
+        ( Diamonds, Queen ) ->
             '🃍'
 
-        ( Club, King ) ->
+        ( Clubs, King ) ->
             '🃞'
 
         ( Spades, King ) ->
             '🂮'
 
-        ( Heart, King ) ->
+        ( Hearts, King ) ->
             '🂾'
 
-        ( Diamond, King ) ->
+        ( Diamonds, King ) ->
             '🃎'
 
-        ( Club, Ace ) ->
+        ( Clubs, Ace ) ->
             '🃑'
 
         ( Spades, Ace ) ->
             '🂡'
 
-        ( Heart, Ace ) ->
+        ( Hearts, Ace ) ->
             '🂱'
 
-        ( Diamond, Ace ) ->
+        ( Diamonds, Ace ) ->
             '🃁'
 
 

@@ -23,18 +23,18 @@ import Parser
 
 
 type Suit
-    = Club
+    = Clubs
     | Spades
-    | Heart
-    | Diamond
+    | Hearts
+    | Diamonds
 
 
 all : List Suit
 all =
-    [ Club
+    [ Clubs
     , Spades
-    , Heart
-    , Diamond
+    , Hearts
+    , Diamonds
     ]
 
 
@@ -66,16 +66,16 @@ compare f lhs rhs =
 suitToInt : Suit -> Int
 suitToInt suit =
     case suit of
-        Club ->
+        Clubs ->
             4
 
         Spades ->
             3
 
-        Heart ->
+        Hearts ->
             2
 
-        Diamond ->
+        Diamonds ->
             1
 
 
@@ -90,13 +90,13 @@ suitToChar suit =
         Spades ->
             '♠'
 
-        Club ->
+        Clubs ->
             '♣'
 
-        Heart ->
+        Hearts ->
             '♥'
 
-        Diamond ->
+        Diamonds ->
             '♦'
 
 
@@ -106,27 +106,27 @@ toString suit =
         Spades ->
             "s"
 
-        Club ->
+        Clubs ->
             "c"
 
-        Heart ->
+        Hearts ->
             "h"
 
-        Diamond ->
+        Diamonds ->
             "d"
 
 
 parser : Parser.Parser Suit
 parser =
     Parser.oneOf
-        [ Parser.symbol "c" |> Parser.map (always Club)
-        , Parser.symbol "C" |> Parser.map (always Club)
+        [ Parser.symbol "c" |> Parser.map (always Clubs)
+        , Parser.symbol "C" |> Parser.map (always Clubs)
         , Parser.symbol "s" |> Parser.map (always Spades)
         , Parser.symbol "S" |> Parser.map (always Spades)
-        , Parser.symbol "h" |> Parser.map (always Heart)
-        , Parser.symbol "H" |> Parser.map (always Heart)
-        , Parser.symbol "d" |> Parser.map (always Diamond)
-        , Parser.symbol "D" |> Parser.map (always Diamond)
+        , Parser.symbol "h" |> Parser.map (always Hearts)
+        , Parser.symbol "H" |> Parser.map (always Hearts)
+        , Parser.symbol "d" |> Parser.map (always Diamonds)
+        , Parser.symbol "D" |> Parser.map (always Diamonds)
         ]
 
 

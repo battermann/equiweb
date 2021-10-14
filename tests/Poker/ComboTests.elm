@@ -16,10 +16,10 @@ comboTests =
     describe "combo tests"
         [ test "combo ctor higher card first" <|
             \_ ->
-                Expect.equal (Combo.combo (Card Rank.Two Suit.Club) (Card Rank.Ten Suit.Spades) |> Maybe.map Combo.toString) (Just "Ts2c")
+                Expect.equal (Combo.combo (Card Rank.Two Suit.Clubs) (Card Rank.Ten Suit.Spades) |> Maybe.map Combo.toString) (Just "Ts2c")
         , test "combo ctor higher suit first" <|
             \_ ->
-                Expect.equal (Combo.combo (Card Rank.Ten Suit.Spades) (Card Rank.Ten Suit.Club) |> Maybe.map Combo.toString) (Just "TcTs")
+                Expect.equal (Combo.combo (Card Rank.Ten Suit.Spades) (Card Rank.Ten Suit.Clubs) |> Maybe.map Combo.toString) (Just "TcTs")
         , test "1326 possible combinations of two hole cards" <|
             \_ ->
                 Expect.equal (Combo.all |> List.length) 1326
@@ -28,7 +28,7 @@ comboTests =
                 Expect.equal (Combo.all |> List.Extra.unique |> List.length) 1326
         , test "combo parser" <|
             \_ ->
-                Expect.equal (Parser.run Combo.parser "TsTc" |> Result.toMaybe) (Combo.combo (Card Rank.Ten Suit.Spades) (Card Rank.Ten Suit.Club))
+                Expect.equal (Parser.run Combo.parser "TsTc" |> Result.toMaybe) (Combo.combo (Card Rank.Ten Suit.Spades) (Card Rank.Ten Suit.Clubs))
         , test "combo serde roundtrip" <|
             \_ ->
                 Expect.equal (Combo.all |> List.map (Combo.toString >> Parser.run Combo.parser)) (Combo.all |> List.map Ok)

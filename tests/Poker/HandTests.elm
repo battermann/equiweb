@@ -109,40 +109,40 @@ handTests =
         , test "suited hand has correct combos" <|
             \_ ->
                 Expect.equal (Hand.suited Rank.Ace Rank.King |> Maybe.map Hand.combos)
-                    ([ Combo.combo (Card Rank.Ace Suit.Club) (Card Rank.King Suit.Club)
+                    ([ Combo.combo (Card Rank.Ace Suit.Clubs) (Card Rank.King Suit.Clubs)
                      , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.King Suit.Spades)
-                     , Combo.combo (Card Rank.Ace Suit.Heart) (Card Rank.King Suit.Heart)
-                     , Combo.combo (Card Rank.Ace Suit.Diamond) (Card Rank.King Suit.Diamond)
+                     , Combo.combo (Card Rank.Ace Suit.Hearts) (Card Rank.King Suit.Hearts)
+                     , Combo.combo (Card Rank.Ace Suit.Diamonds) (Card Rank.King Suit.Diamonds)
                      ]
                         |> Maybe.Extra.combine
                     )
         , test "pair hand has correct combos" <|
             \_ ->
                 Expect.equal (Hand.pair Rank.Ace |> Hand.combos)
-                    ([ Combo.combo (Card Rank.Ace Suit.Club) (Card Rank.Ace Suit.Spades)
-                     , Combo.combo (Card Rank.Ace Suit.Club) (Card Rank.Ace Suit.Heart)
-                     , Combo.combo (Card Rank.Ace Suit.Club) (Card Rank.Ace Suit.Diamond)
-                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.Ace Suit.Heart)
-                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.Ace Suit.Diamond)
-                     , Combo.combo (Card Rank.Ace Suit.Heart) (Card Rank.Ace Suit.Diamond)
+                    ([ Combo.combo (Card Rank.Ace Suit.Clubs) (Card Rank.Ace Suit.Spades)
+                     , Combo.combo (Card Rank.Ace Suit.Clubs) (Card Rank.Ace Suit.Hearts)
+                     , Combo.combo (Card Rank.Ace Suit.Clubs) (Card Rank.Ace Suit.Diamonds)
+                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.Ace Suit.Hearts)
+                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.Ace Suit.Diamonds)
+                     , Combo.combo (Card Rank.Ace Suit.Hearts) (Card Rank.Ace Suit.Diamonds)
                      ]
                         |> Maybe.Extra.values
                     )
         , test "offsuit hand has correct combos" <|
             \_ ->
                 Expect.equal (Hand.offsuit Rank.Ace Rank.King |> Maybe.map Hand.combos)
-                    ([ Combo.combo (Card Rank.Ace Suit.Club) (Card Rank.King Suit.Spades)
-                     , Combo.combo (Card Rank.Ace Suit.Club) (Card Rank.King Suit.Heart)
-                     , Combo.combo (Card Rank.Ace Suit.Club) (Card Rank.King Suit.Diamond)
-                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.King Suit.Club)
-                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.King Suit.Heart)
-                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.King Suit.Diamond)
-                     , Combo.combo (Card Rank.Ace Suit.Heart) (Card Rank.King Suit.Club)
-                     , Combo.combo (Card Rank.Ace Suit.Heart) (Card Rank.King Suit.Spades)
-                     , Combo.combo (Card Rank.Ace Suit.Heart) (Card Rank.King Suit.Diamond)
-                     , Combo.combo (Card Rank.Ace Suit.Diamond) (Card Rank.King Suit.Club)
-                     , Combo.combo (Card Rank.Ace Suit.Diamond) (Card Rank.King Suit.Spades)
-                     , Combo.combo (Card Rank.Ace Suit.Diamond) (Card Rank.King Suit.Heart)
+                    ([ Combo.combo (Card Rank.Ace Suit.Clubs) (Card Rank.King Suit.Spades)
+                     , Combo.combo (Card Rank.Ace Suit.Clubs) (Card Rank.King Suit.Hearts)
+                     , Combo.combo (Card Rank.Ace Suit.Clubs) (Card Rank.King Suit.Diamonds)
+                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.King Suit.Clubs)
+                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.King Suit.Hearts)
+                     , Combo.combo (Card Rank.Ace Suit.Spades) (Card Rank.King Suit.Diamonds)
+                     , Combo.combo (Card Rank.Ace Suit.Hearts) (Card Rank.King Suit.Clubs)
+                     , Combo.combo (Card Rank.Ace Suit.Hearts) (Card Rank.King Suit.Spades)
+                     , Combo.combo (Card Rank.Ace Suit.Hearts) (Card Rank.King Suit.Diamonds)
+                     , Combo.combo (Card Rank.Ace Suit.Diamonds) (Card Rank.King Suit.Clubs)
+                     , Combo.combo (Card Rank.Ace Suit.Diamonds) (Card Rank.King Suit.Spades)
+                     , Combo.combo (Card Rank.Ace Suit.Diamonds) (Card Rank.King Suit.Hearts)
                      ]
                         |> Maybe.Extra.combine
                     )

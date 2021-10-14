@@ -24,16 +24,16 @@ view msg selectState cursor refWidth card =
     let
         ( color, icon ) =
             case card.suit of
-                Club ->
+                Clubs ->
                     ( "forestgreen", Views.Icons.club )
 
                 Spades ->
                     ( "darkslategrey", Views.Icons.spade )
 
-                Heart ->
+                Hearts ->
                     ( "darkred", Views.Icons.heart )
 
-                Diamond ->
+                Diamonds ->
                     ( "royalblue", Views.Icons.diamond )
 
         opacity =
