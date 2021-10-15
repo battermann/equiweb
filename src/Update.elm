@@ -6,7 +6,7 @@ import Bootstrap.Alt.Popover as Popover
 import Browser
 import Browser.Navigation as Navigation
 import DoubleSlider as Slider
-import Form
+import Form exposing (RangesForm)
 import Keyboard
 import List.Extra
 import Maybe.Extra
@@ -412,6 +412,10 @@ update msg model =
 
         ToggleOffsuitSuitsSelection suit1 suit2 ->
             ( { model | suitSelection = model.suitSelection |> Maybe.map (Suit.toggleOffSuitSelection suit1 suit2) }, Cmd.none )
+
+        UpdateNumberOfCombos ->
+            -- ( { model | form = Form.updateNumberOfCombos model.form }, Cmd.none ) todo: remove
+            ( model, Cmd.none )
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )

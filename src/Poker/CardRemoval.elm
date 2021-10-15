@@ -60,4 +60,4 @@ firstUnBlocked combos ranges =
 numberOfCombos : List Combo -> Board -> List (List HandOrCombo) -> Int
 numberOfCombos combos board ranges =
     combos
-        |> List.Extra.count (unblocked board (ranges |> List.map (List.concatMap HandOrCombo.combos) |> List.Extra.filterNot List.isEmpty))
+        |> List.Extra.count (unblocked board (ranges |> List.map (List.concatMap HandOrCombo.combos) |> List.Extra.filterNot List.isEmpty |> List.sortBy List.length))

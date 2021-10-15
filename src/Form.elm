@@ -3,6 +3,7 @@ module Form exposing
     , board
     , boardField
     , initialForm
+    , numberOfCombos
     , range
     , rangeField
     , ranges
@@ -11,16 +12,40 @@ module Form exposing
     , rewriteBoard
     , setBoard
     , setRange
+    , updateNumberOfCombos
     , validateForm
     )
 
 import Form.Field exposing (Field)
+import List.Extra
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
+import Poker.CardRemoval as CardRemoval exposing (numberOfCombos)
 import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
-import Poker.Position exposing (Position(..))
+import Poker.Position as Position exposing (Position(..))
 import Result.Extra
+
+
+type alias NumberOfCombos =
+    { utg : Int
+    , mp : Int
+    , co : Int
+    , bu : Int
+    , sb : Int
+    , bb : Int
+    }
+
+
+initialNumberOfCombos : NumberOfCombos
+initialNumberOfCombos =
+    { utg = 0
+    , mp = 0
+    , co = 0
+    , bu = 0
+    , sb = 0
+    , bb = 0
+    }
 
 
 type RangesForm
@@ -32,6 +57,7 @@ type RangesForm
         , sb : Field (List HandOrCombo)
         , bb : Field (List HandOrCombo)
         , board : Field (List Card)
+        , numberOfCombos : NumberOfCombos
         }
 
 
@@ -77,6 +103,7 @@ initialForm =
         , sb = { name = "SB", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
         , bb = { name = "BB", value = "", validated = HandOrCombo.parseAsCononicalHandsOrCombos "", edited = False }
         , board = { name = "Board", value = "", validated = Ok [], edited = False }
+        , numberOfCombos = initialNumberOfCombos
         }
 
 
@@ -136,6 +163,13 @@ range position (RangesForm form) =
             form.bb.validated |> Result.withDefault []
 
 
+allRangesExcept : Position -> RangesForm -> List (List HandOrCombo)
+allRangesExcept position form =
+    Position.all
+        |> List.Extra.filterNot ((==) position)
+        |> List.map (\p -> range p form)
+
+
 rewriteBoard : RangesForm -> RangesForm
 rewriteBoard (RangesForm form) =
     RangesForm { form | board = Form.Field.rewrite form.board (List.map Card.toString >> String.concat) }
@@ -187,3 +221,45 @@ ranges form =
         |> List.map Result.toMaybe
         |> Maybe.Extra.values
         |> List.filter (not << List.isEmpty)
+
+
+updateNumberOfCombos : RangesForm -> RangesForm
+updateNumberOfCombos form =
+    let
+        (RangesForm f) =
+            form
+    in
+    RangesForm
+        { f
+            | numberOfCombos =
+                { initialNumberOfCombos
+                    | utg = CardRemoval.numberOfCombos (range UTG form |> List.concatMap HandOrCombo.combos) (board form) (allRangesExcept UTG form)
+                    , mp = CardRemoval.numberOfCombos (range MP form |> List.concatMap HandOrCombo.combos) (board form) (allRangesExcept MP form)
+                    , co = CardRemoval.numberOfCombos (range CO form |> List.concatMap HandOrCombo.combos) (board form) (allRangesExcept CO form)
+                    , bu = CardRemoval.numberOfCombos (range BU form |> List.concatMap HandOrCombo.combos) (board form) (allRangesExcept BU form)
+                    , sb = CardRemoval.numberOfCombos (range SB form |> List.concatMap HandOrCombo.combos) (board form) (allRangesExcept SB form)
+                    , bb = CardRemoval.numberOfCombos (range BB form |> List.concatMap HandOrCombo.combos) (board form) (allRangesExcept BB form)
+                }
+        }
+
+
+numberOfCombos : Position -> RangesForm -> Int
+numberOfCombos position (RangesForm form) =
+    case position of
+        UTG ->
+            form.numberOfCombos.utg
+
+        MP ->
+            form.numberOfCombos.mp
+
+        CO ->
+            form.numberOfCombos.co
+
+        BU ->
+            form.numberOfCombos.bu
+
+        SB ->
+            form.numberOfCombos.sb
+
+        BB ->
+            form.numberOfCombos.bb

@@ -1,4 +1,4 @@
-module Views.RangePercentage exposing (view, viewIfNotEmpty, viewWithCardRemoval)
+module Views.RangePercentageCardRemoval exposing (view, viewIfNotEmpty, viewWithCardRemoval)
 
 import Bootstrap.Form as Form
 import Bootstrap.Progress as Progress
@@ -44,7 +44,7 @@ viewWithCardRemoval : Position -> Model -> Html Msg
 viewWithCardRemoval position model =
     let
         numberOfCombos =
-            CardRemoval.numberOfCombos model.rangeSelection (Model.board model) (Model.allRangesExcept position model)
+            Form.numberOfCombos position model.form
 
         percentage =
             Combo.percentage numberOfCombos

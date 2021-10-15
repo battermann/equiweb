@@ -24,7 +24,7 @@ import Round
 import Svg
 import Svg.Attributes
 import Views.Board
-import Views.RangePercentage
+import Views.RangePercentageCardRemoval
 
 
 type SelectState
@@ -63,7 +63,7 @@ view model =
                                             )
                                     )
                              )
-                                ++ [ Views.RangePercentage.view (model.rangeSelection |> List.map HandOrCombo.fromCombo) ]
+                                ++ [ Views.RangePercentageCardRemoval.view (model.rangeSelection |> List.map HandOrCombo.fromCombo) ]
                              -- ++ [ Views.RangePercentage.viewWithCardRemoval model.rangeSelectionPosition model ]
                             )
                         ]

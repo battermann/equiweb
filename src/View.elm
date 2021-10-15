@@ -21,7 +21,7 @@ import Form
 import Form.Field exposing (Field)
 import Html exposing (Html)
 import Html.Attributes
-import Html.Events
+import Html.Events exposing (onBlur)
 import Model exposing (Model, Msg(..), PopoverStates, ResultLine)
 import Poker.Card as Card
 import Poker.HandOrCombo exposing (HandOrCombo)
@@ -36,7 +36,7 @@ import Url.Builder
 import Views.Board
 import Views.Modal.Board
 import Views.Modal.Range
-import Views.RangePercentage
+import Views.RangePercentageCardRemoval
 import Views.Result
 
 
@@ -119,12 +119,12 @@ validationFeedbackOutline field =
 inputFormView : Model -> Html Msg
 inputFormView model =
     Form.form []
-        [ rangeInputView (Model.popoverState UTG model) UTG (Form.rangeField UTG model.form) (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Ranges.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (Model.popoverState MP model) MP (Form.rangeField MP model.form) (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Ranges.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (Model.popoverState CO model) CO (Form.rangeField CO model.form) (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Ranges.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (Model.popoverState BU model) BU (Form.rangeField BU model.form) (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Ranges.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (Model.popoverState SB model) SB (Form.rangeField SB model.form) (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Ranges.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
-        , rangeInputView (Model.popoverState BB model) BB (Form.rangeField BB model.form) (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Ranges.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
+        [ rangeInputView model UTG (model.currentApiResponse |> RemoteData.map .utg |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateUtg (Ranges.positionalRanges |> List.filter (.position >> (==) UTG) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView model MP (model.currentApiResponse |> RemoteData.map .mp |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateMp (Ranges.positionalRanges |> List.filter (.position >> (==) MP) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView model CO (model.currentApiResponse |> RemoteData.map .co |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateCo (Ranges.positionalRanges |> List.filter (.position >> (==) CO) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView model BU (model.currentApiResponse |> RemoteData.map .bu |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBu (Ranges.positionalRanges |> List.filter (.position >> (==) BU) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView model SB (model.currentApiResponse |> RemoteData.map .sb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateSb (Ranges.positionalRanges |> List.filter (.position >> (==) SB) |> List.map (\pr -> ( pr.label, pr.range )))
+        , rangeInputView model BB (model.currentApiResponse |> RemoteData.map .bb |> RemoteData.toMaybe |> Maybe.andThen identity) model.rangeDropdownStateBb (Ranges.positionalRanges |> List.filter (.position >> (==) BB) |> List.map (\pr -> ( pr.label, pr.range )))
         , Form.row
             []
             [ Form.col [ Col.sm10 ]
@@ -230,8 +230,15 @@ inputFormView model =
         ]
 
 
-rangeInputView : PopoverStates -> Position -> Field (List HandOrCombo) -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
-rangeInputView popoverStates position field result dropdownState ranges =
+rangeInputView : Model -> Position -> Maybe ResultLine -> Dropdown.State -> List ( String, String ) -> Html Msg
+rangeInputView model position result dropdownState ranges =
+    let
+        popoverStates =
+            Model.popoverState position model
+
+        field =
+            Form.rangeField position model.form
+    in
     Form.row []
         [ Form.col []
             [ Form.group []
@@ -242,6 +249,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                         (validationFeedbackOutline field
                             ++ [ Input.value field.value
                                , Input.onInput (RangeInput position)
+                               , Input.attrs [ Html.Events.onBlur UpdateNumberOfCombos ]
                                ]
                         )
                     )
@@ -325,7 +333,7 @@ rangeInputView popoverStates position field result dropdownState ranges =
                         ]
                     |> InputGroup.view
                  ]
-                    ++ Views.RangePercentage.viewIfNotEmpty (field.validated |> Result.withDefault [])
+                    ++ [ Views.RangePercentageCardRemoval.viewWithCardRemoval position model ]
                     ++ [ Form.invalidFeedback [] [ Html.text ("The " ++ Position.toString position ++ " range is not a valid range") ] ]
                 )
             ]

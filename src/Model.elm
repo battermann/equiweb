@@ -257,6 +257,7 @@ type Msg
     | TogglePairsSuitsSelection Suit Suit
     | ToggleSuitedSuitsSelection Suit
     | ToggleSuitSelection
+    | UpdateNumberOfCombos
     | UrlChange Url
 
 
