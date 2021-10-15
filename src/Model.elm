@@ -21,6 +21,7 @@ module Model exposing
 import Bootstrap.Alt.Modal as Modal
 import Bootstrap.Alt.Popover as Popover
 import Bootstrap.Dropdown as Dropdown
+import Bounce exposing (Bounce)
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Navigation
 import DoubleSlider as Slider
@@ -138,6 +139,7 @@ type alias Model =
     , slider : Slider.DoubleSlider Msg
     , suitSelection : Maybe Suit.Selection
     , simulationApibaseUrl : Maybe String
+    , bounce : Bounce
     }
 
 
@@ -196,6 +198,7 @@ init send flags url key =
     , slider = initialRangeSlider
     , suitSelection = Nothing
     , simulationApibaseUrl = baseUrl
+    , bounce = Bounce.init
     }
         |> send
 
@@ -213,6 +216,7 @@ type alias ApiResponse =
 type Msg
     = ApiResponseReceived (WebData ApiResponse)
     | BoardInput String
+    | BounceMsg
     | CardHover (Maybe Card)
     | ClearBoard
     | ClearRange
@@ -257,7 +261,6 @@ type Msg
     | TogglePairsSuitsSelection Suit Suit
     | ToggleSuitedSuitsSelection Suit
     | ToggleSuitSelection
-    | UpdateNumberOfCombos
     | UrlChange Url
 
 
@@ -289,6 +292,7 @@ urlParser =
                 |> Form.rewrite BB
                 |> set Form.setBoard maybeBaord
                 |> Form.rewriteBoard
+                |> Form.updateNumberOfCombos
     in
     UrlParser.map toForm
         (UrlParser.top

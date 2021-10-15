@@ -7,7 +7,6 @@ import Form
 import Html exposing (Html)
 import Html.Attributes
 import Model exposing (Model, Msg(..))
-import Poker.CardRemoval as CardRemoval
 import Poker.Combo as Combo
 import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
 import Poker.Position exposing (Position(..))
@@ -40,8 +39,8 @@ view range =
         ]
 
 
-viewWithCardRemoval : Position -> Model -> Html Msg
-viewWithCardRemoval position model =
+viewWithCardRemoval : Bool -> Position -> Model -> List (Html Msg)
+viewWithCardRemoval edited position model =
     let
         numberOfCombos =
             Form.numberOfCombos position model.form
@@ -49,13 +48,18 @@ viewWithCardRemoval position model =
         percentage =
             Combo.percentage numberOfCombos
     in
-    Form.help []
-        [ Html.div [ Spacing.mt1 ]
-            [ Progress.progress
-                [ Progress.value (percentage * 100)
-                , Progress.info
-                , Progress.wrapperAttrs [ Html.Attributes.style "height" "6px" ]
+    if edited then
+        [ Form.help []
+            [ Html.div [ Spacing.mt1 ]
+                [ Progress.progress
+                    [ Progress.value (percentage * 100)
+                    , Progress.info
+                    , Progress.wrapperAttrs [ Html.Attributes.style "height" "6px" ]
+                    ]
+                , Html.text (((percentage * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((numberOfCombos |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
                 ]
-            , Html.text (((percentage * 100) |> Round.round 1) ++ "%" ++ " " ++ "(" ++ ((numberOfCombos |> String.fromInt) ++ "/" ++ (Combo.total |> String.fromInt) ++ ")"))
             ]
         ]
+
+    else
+        []

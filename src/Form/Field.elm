@@ -1,4 +1,4 @@
-module Form.Field exposing (Field, Validated, apply, rewrite, setEdited, setValue)
+module Form.Field exposing (Field, Validated, apply, clear, rewrite, setEdited, setValue)
 
 
 type alias Error =
@@ -29,12 +29,17 @@ rewrite field toString =
 
 setValue : (String -> Validated a) -> String -> Field a -> Field a
 setValue f value field =
-    { field | value = value, validated = f value, edited = True }
+    { field | value = value, validated = f value, edited = String.isEmpty value |> not }
 
 
 setEdited : Field a -> Field a
 setEdited field =
     { field | edited = True }
+
+
+clear : a -> Field a -> Field a
+clear default field =
+    { field | edited = False, value = "", validated = Ok default }
 
 
 apply : Validated a -> Validated (a -> b) -> Validated b

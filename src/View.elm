@@ -16,16 +16,16 @@ import Bootstrap.Spinner as Spinner
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
+import Bounce
 import Browser
 import Form
 import Form.Field exposing (Field)
 import Html exposing (Html)
 import Html.Attributes
-import Html.Events exposing (onBlur)
-import Model exposing (Model, Msg(..), PopoverStates, ResultLine)
+import Html.Events
+import Model exposing (Model, Msg(..), ResultLine)
 import Poker.Card as Card
-import Poker.HandOrCombo exposing (HandOrCombo)
-import Poker.Position as Position exposing (Position(..))
+import Poker.Position exposing (Position(..))
 import Poker.Ranges as Ranges
 import Poker.Suit exposing (Suit(..))
 import Ports exposing (SharingType(..))
@@ -103,8 +103,25 @@ equityValueView result =
             Input.value (Round.round 2 (100 * value.equity) ++ " %")
 
 
-validationFeedbackOutline : Field a -> List (Input.Option msg)
-validationFeedbackOutline field =
+validationFeedbackOutlineRange : Int -> Field a -> List (Input.Option msg)
+validationFeedbackOutlineRange numberOfCombos field =
+    case ( field.validated, field.edited ) of
+        ( Ok _, True ) ->
+            if numberOfCombos > 0 then
+                [ Input.success ]
+
+            else
+                [ Input.danger ]
+
+        ( Err _, True ) ->
+            [ Input.danger ]
+
+        _ ->
+            []
+
+
+validationFeedbackOutlineBoard : Field a -> List (Input.Option msg)
+validationFeedbackOutlineBoard field =
     case ( field.validated, field.edited ) of
         ( Ok _, True ) ->
             [ Input.success ]
@@ -132,7 +149,7 @@ inputFormView model =
                     [ Form.label [] [ Html.text (Form.boardField model.form).name ]
                     , InputGroup.config
                         (InputGroup.text
-                            (validationFeedbackOutline (Form.boardField model.form)
+                            (validationFeedbackOutlineBoard (Form.boardField model.form)
                                 ++ [ Input.value (Form.boardField model.form).value
                                    , Input.onInput BoardInput
                                    ]
@@ -246,15 +263,14 @@ rangeInputView model position result dropdownState ranges =
                     [ Html.text field.name ]
                  , InputGroup.config
                     (InputGroup.text
-                        (validationFeedbackOutline field
+                        (validationFeedbackOutlineRange (Form.numberOfCombos position model.form) field
                             ++ [ Input.value field.value
                                , Input.onInput (RangeInput position)
-                               , Input.attrs [ Html.Events.onBlur UpdateNumberOfCombos ]
                                ]
                         )
                     )
                     |> InputGroup.attrs
-                        [ if field.validated |> Result.Extra.isOk then
+                        [ if (field.validated |> Result.Extra.isOk) && Form.numberOfCombos position model.form > 0 then
                             Html.Attributes.class "is-valid"
 
                           else
@@ -333,8 +349,18 @@ rangeInputView model position result dropdownState ranges =
                         ]
                     |> InputGroup.view
                  ]
-                    ++ [ Views.RangePercentageCardRemoval.viewWithCardRemoval position model ]
-                    ++ [ Form.invalidFeedback [] [ Html.text ("The " ++ Position.toString position ++ " range is not a valid range") ] ]
+                    ++ Views.RangePercentageCardRemoval.viewWithCardRemoval field.edited position model
+                    ++ (case field.validated of
+                            Ok _ ->
+                                if field.edited && Form.numberOfCombos position model.form == 0 && Bounce.steady model.bounce then
+                                    [ Form.invalidFeedback [] [ Html.text "The range is not valid due to conflicting card removal effects" ] ]
+
+                                else
+                                    []
+
+                            Err err ->
+                                [ Form.invalidFeedback [] [ Html.text (err |> String.join ", ") ] ]
+                       )
                 )
             ]
         , Form.col [ Col.sm2 ]

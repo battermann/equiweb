@@ -3,10 +3,11 @@ module Update exposing (sendSimulationRequest, update)
 import Api
 import Bootstrap.Alt.Modal as Modal
 import Bootstrap.Alt.Popover as Popover
+import Bounce
 import Browser
 import Browser.Navigation as Navigation
 import DoubleSlider as Slider
-import Form exposing (RangesForm)
+import Form
 import Keyboard
 import List.Extra
 import Maybe.Extra
@@ -24,6 +25,11 @@ import ResultFormatter
 import Url
 import Url.Builder
 import Url.Parser as UrlParser
+
+
+bounceDelay : Float
+bounceDelay =
+    500
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -70,6 +76,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         BoardInput str ->
             ( { model
@@ -78,6 +85,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         RewriteRange position ->
             ( { model | form = Form.rewrite position model.form }, Cmd.none )
@@ -104,6 +112,7 @@ update msg model =
 
         ConfirmBoardSelection ->
             confirmBoardSelection model
+                |> triggerBounce
 
         KeyDown rawKey ->
             case Keyboard.anyKeyUpper rawKey of
@@ -117,10 +126,11 @@ update msg model =
 
                 Just Keyboard.Enter ->
                     if model.boardSelectModalVisibility == Modal.shown then
-                        confirmBoardSelection model
+                        confirmBoardSelection model |> triggerBounce
 
                     else if model.rangeSelectionModalVisibility == Modal.shown then
                         confirmRangeSelection model.rangeSelectionPosition model
+                            |> triggerBounce
 
                     else
                         sendSimulationRequest model
@@ -150,6 +160,7 @@ update msg model =
 
         ConfirmRangeSelection ->
             confirmRangeSelection model.rangeSelectionPosition model
+                |> triggerBounce
 
         MouseDown ->
             case model.handUnderMouse of
@@ -245,6 +256,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         CopyToClipboard index sharingType ->
             let
@@ -270,7 +282,8 @@ update msg model =
                     ( model, Cmd.none )
 
         RemoveRange position ->
-            ( { model | form = Form.setRange position "" model.form }, Cmd.none )
+            ( { model | form = Form.clearRange position model.form }, Cmd.none )
+                |> triggerBounce
 
         NotifyCopyToClipboard (Err _) ->
             ( model, Cmd.none )
@@ -311,7 +324,8 @@ update msg model =
             )
 
         RemoveBoard ->
-            ( { model | form = Form.setBoard "" model.form }, Cmd.none )
+            ( { model | form = Form.clearBoard model.form }, Cmd.none )
+                |> triggerBounce
 
         PopoverStateSelectRange position state ->
             Cmd.none |> Tuple.pair (updatePopoverState (\s -> { s | rangeSelect = state }) position model)
@@ -413,9 +427,24 @@ update msg model =
         ToggleOffsuitSuitsSelection suit1 suit2 ->
             ( { model | suitSelection = model.suitSelection |> Maybe.map (Suit.toggleOffSuitSelection suit1 suit2) }, Cmd.none )
 
-        UpdateNumberOfCombos ->
-            -- ( { model | form = Form.updateNumberOfCombos model.form }, Cmd.none ) todo: remove
-            ( model, Cmd.none )
+        BounceMsg ->
+            let
+                newBounce =
+                    Bounce.pop model.bounce
+
+                form =
+                    if Bounce.steady newBounce then
+                        Form.updateNumberOfCombos model.form
+
+                    else
+                        model.form
+            in
+            ( { model | bounce = newBounce, form = form }, Cmd.none )
+
+
+triggerBounce : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+triggerBounce ( model, cmd ) =
+    ( { model | bounce = Bounce.push model.bounce }, Cmd.batch [ cmd, Bounce.delay bounceDelay BounceMsg ] )
 
 
 handleApiResponse : Model -> WebData ApiResponse -> ( Model, Cmd Msg )

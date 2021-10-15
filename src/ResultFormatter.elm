@@ -3,7 +3,7 @@ module ResultFormatter exposing (markdown, pokerStrategy, twoPlusTwo)
 import Maybe.Extra
 import Model exposing (ResultLine, SimulationResult)
 import Poker.Board as Board
-import Poker.Card as Card exposing (Card)
+import Poker.Card exposing (Card)
 import Poker.HandOrCombo as Range
 import Poker.Position as Position exposing (Position(..))
 import Round

@@ -2,6 +2,8 @@ module Form exposing
     ( RangesForm
     , board
     , boardField
+    , clearBoard
+    , clearRange
     , initialForm
     , numberOfCombos
     , range
@@ -207,6 +209,17 @@ validateForm (RangesForm form) =
         |> Form.Field.apply (form.sb.validated |> Result.Extra.mapBoth (always [ "The SB range is not a valid range." ]) identity)
         |> Form.Field.apply (form.bb.validated |> Result.Extra.mapBoth (always [ "The BB range is not a valid range." ]) identity)
         |> Form.Field.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board." ]) identity)
+        |> Result.Extra.filter [ "" ] noConflictingCardRemoval
+
+
+noConflictingCardRemoval : RangesForm -> Bool
+noConflictingCardRemoval (RangesForm form) =
+    (String.isEmpty form.utg.value || form.numberOfCombos.utg > 0)
+        && (String.isEmpty form.mp.value || form.numberOfCombos.mp > 0)
+        && (String.isEmpty form.co.value || form.numberOfCombos.co > 0)
+        && (String.isEmpty form.bu.value || form.numberOfCombos.bu > 0)
+        && (String.isEmpty form.sb.value || form.numberOfCombos.sb > 0)
+        && (String.isEmpty form.bb.value || form.numberOfCombos.bb > 0)
 
 
 ranges : RangesForm -> List (List HandOrCombo)
@@ -263,3 +276,30 @@ numberOfCombos position (RangesForm form) =
 
         BB ->
             form.numberOfCombos.bb
+
+
+clearBoard : RangesForm -> RangesForm
+clearBoard (RangesForm form) =
+    RangesForm { form | board = Form.Field.clear [] form.board }
+
+
+clearRange : Position -> RangesForm -> RangesForm
+clearRange position (RangesForm form) =
+    case position of
+        UTG ->
+            RangesForm { form | utg = Form.Field.clear [] form.utg }
+
+        MP ->
+            RangesForm { form | mp = Form.Field.clear [] form.mp }
+
+        CO ->
+            RangesForm { form | co = Form.Field.clear [] form.co }
+
+        BU ->
+            RangesForm { form | bu = Form.Field.clear [] form.bu }
+
+        SB ->
+            RangesForm { form | sb = Form.Field.clear [] form.sb }
+
+        BB ->
+            RangesForm { form | bb = Form.Field.clear [] form.bb }

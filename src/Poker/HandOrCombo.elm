@@ -110,7 +110,7 @@ parseAsCononicalHandsOrCombos rangeString =
                 |> Result.Extra.combine
                 |> Result.map (List.concat >> toCanonicalHandsOrCombos)
             )
-        |> Result.Extra.mapBoth (always [ "Range is not valid" ]) identity
+        |> Result.Extra.mapBoth (always [ "The range is not valid" ]) identity
 
 
 order : HandOrCombo -> HandOrCombo -> Order
