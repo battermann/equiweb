@@ -1,8 +1,10 @@
-module Poker.CardRemoval exposing (unblocked)
+module Poker.CardRemoval exposing (numberOfCombos, unblocked)
 
+import List.Extra
 import Poker.Board as Board
 import Poker.Card exposing (Card)
 import Poker.Combo as Combo exposing (Combo)
+import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
 
 
 type alias Board =
@@ -13,8 +15,8 @@ type alias Range =
     List Combo
 
 
-unblocked : Combo -> Board -> List Range -> Bool
-unblocked combo board ranges =
+unblocked : Board -> List Range -> Combo -> Bool
+unblocked board ranges combo =
     if board |> Board.blocks combo then
         False
 
@@ -53,3 +55,9 @@ firstUnBlocked combos ranges =
 
             else
                 firstUnBlocked combos tailCombos
+
+
+numberOfCombos : List Combo -> Board -> List (List HandOrCombo) -> Int
+numberOfCombos combos board ranges =
+    combos
+        |> List.Extra.count (unblocked board (ranges |> List.map (List.concatMap HandOrCombo.combos) |> List.Extra.filterNot List.isEmpty))

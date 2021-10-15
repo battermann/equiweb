@@ -64,6 +64,7 @@ view model =
                                     )
                              )
                                 ++ [ Views.RangePercentage.view (model.rangeSelection |> List.map HandOrCombo.fromCombo) ]
+                             -- ++ [ Views.RangePercentage.viewWithCardRemoval model.rangeSelectionPosition model ]
                             )
                         ]
                     ]

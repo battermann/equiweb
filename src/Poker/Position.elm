@@ -1,4 +1,4 @@
-module Poker.Position exposing (Position(..), toString)
+module Poker.Position exposing (Position(..), all, toString)
 
 
 type Position
@@ -8,6 +8,11 @@ type Position
     | BU
     | SB
     | BB
+
+
+all : List Position
+all =
+    [ UTG, MP, CO, BU, SB, BB ]
 
 
 toString : Position -> String

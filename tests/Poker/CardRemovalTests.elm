@@ -17,37 +17,39 @@ cardRemovalTests =
     describe "card removal tests"
         [ fuzz Fuzzer.combo "empty board and ranges always valid" <|
             \combo ->
-                Expect.true "should always return true" (CardRemoval.unblocked combo [] [])
+                Expect.true "should always return true" (CardRemoval.unblocked [] [] combo)
         , fuzz Fuzzer.combo "ranges with all combos always valid" <|
             \combo ->
-                Expect.true "should always return true" (CardRemoval.unblocked combo [] [ Combo.all, Combo.all ])
+                Expect.true "should always return true" (CardRemoval.unblocked [] [ Combo.all, Combo.all ] combo)
         , fuzz Fuzzer.combo "ranges with single same combo always invalid" <|
             \combo ->
-                Expect.false "should always return false" (CardRemoval.unblocked combo [] [ Combo.all, [ combo ] ])
+                Expect.false "should always return false" (CardRemoval.unblocked [] [ Combo.all, [ combo ] ] combo)
         , fuzz Fuzzer.combo "board blocks combo always invalid" <|
             \combo ->
                 Expect.false "should always return false"
-                    (CardRemoval.unblocked combo [ Combo.fst combo, Card Rank.Ace Suit.Club, Card Rank.King Suit.Heart ] [])
+                    (CardRemoval.unblocked [ Combo.fst combo, Card Rank.Ace Suit.Clubs, Card Rank.King Suit.Hearts ] [] combo)
         , test "AhJh valid" <|
             \_ ->
-                case Combo.combo (Card Rank.Ace Suit.Heart) (Card Rank.Jack Suit.Heart) of
+                case Combo.combo (Card Rank.Ace Suit.Hearts) (Card Rank.Jack Suit.Hearts) of
                     Just combo ->
                         Expect.true "should return true"
-                            (CardRemoval.unblocked combo
+                            (CardRemoval.unblocked
                                 []
                                 ([ "AhKd,AdKd,2h2d", "AdKd,Ad3d" ] |> List.map makeCombos)
+                                combo
                             )
 
                     Nothing ->
                         Expect.fail "should not happen"
         , test "AhJh invalid" <|
             \_ ->
-                case Combo.combo (Card Rank.Ace Suit.Heart) (Card Rank.Jack Suit.Heart) of
+                case Combo.combo (Card Rank.Ace Suit.Hearts) (Card Rank.Jack Suit.Hearts) of
                     Just combo ->
                         Expect.false "should return false"
-                            (CardRemoval.unblocked combo
+                            (CardRemoval.unblocked
                                 []
                                 ([ "AhKd,AdKd", "AdKd,Ad3d" ] |> List.map makeCombos)
+                                combo
                             )
 
                     Nothing ->

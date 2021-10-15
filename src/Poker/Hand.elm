@@ -33,7 +33,6 @@ import List.Extra
 import Maybe.Extra
 import Parser exposing ((|.), (|=), Parser)
 import Poker.Card exposing (Card)
-import Poker.CardRemoval
 import Poker.Combo as Combo exposing (Combo)
 import Poker.RangeNotation exposing (RangeNotation(..))
 import Poker.Rank as Rank exposing (Rank(..))

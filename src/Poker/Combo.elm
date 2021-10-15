@@ -14,6 +14,7 @@ module Poker.Combo exposing
     , isSuited
     , order
     , parser
+    , percentage
     , snd
     , toString
     , total
@@ -204,3 +205,8 @@ hasBlocker (Combo c1 c2) c =
 aceOfClubsAceOfspades : Combo
 aceOfClubsAceOfspades =
     Combo (Card Rank.Ace Suit.Clubs) (Card Rank.Ace Suit.Spades)
+
+
+percentage : Int -> Float
+percentage n =
+    toFloat n / toFloat total
