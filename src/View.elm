@@ -359,7 +359,11 @@ rangeInputView model position result dropdownState ranges =
                                     []
 
                             Err err ->
-                                [ Form.invalidFeedback [] [ Html.text (err |> String.join ", ") ] ]
+                                if field.edited && Bounce.steady model.bounce then
+                                    [ Form.invalidFeedback [] [ Html.text (err |> String.join ", ") ] ]
+
+                                else
+                                    []
                        )
                 )
             ]
