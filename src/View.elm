@@ -200,13 +200,29 @@ inputFormView model =
                         [ Button.light
                         , Button.attrs [ Size.w100, Html.Attributes.style "margin-right" "2px", Html.Attributes.href (Url.Builder.absolute [] []) ]
                         ]
-                        [ Html.text "CLEAR ALL" ]
+                        [ Html.div
+                            [ Flex.block
+                            , Flex.row
+                            , Flex.justifyCenter
+                            , Flex.alignItemsCenter
+                            , Html.Attributes.style "gap" "10px"
+                            ]
+                            [ Html.i [ Html.Attributes.class "far fa-trash-alt" ] [], Html.text "CLEAR ALL" ]
+                        ]
                     , Button.button
                         [ Button.success
                         , Button.attrs [ Size.w100, Html.Attributes.style "margin-left" "2px" ]
                         , Button.onClick SendSimulationRequest
                         ]
-                        [ Html.text "RUN" ]
+                        [ Html.div
+                            [ Flex.block
+                            , Flex.row
+                            , Flex.justifyCenter
+                            , Flex.alignItemsCenter
+                            , Html.Attributes.style "gap" "10px"
+                            ]
+                            [ Html.i [ Html.Attributes.class "fas fa-play", Html.Attributes.style "color" "white" ] [], Html.text "RUN" ]
+                        ]
                     ]
                 ]
             ]
