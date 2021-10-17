@@ -90,6 +90,9 @@ percentageParser =
         , Parser.succeed 100
             |. Parser.symbol "random"
             |. Parser.end
+        , Parser.succeed 100
+            |. Parser.symbol "Random"
+            |. Parser.end
         ]
         |> Parser.map (\p -> (p |> toFloat) / 100.0)
         |> Parser.map best
