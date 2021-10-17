@@ -154,12 +154,20 @@ update msg model =
                 , blockedCombosForRangeSelection = CardRemoval.blockedCombosForRangeSelection (Form.board model.form) (Form.allRangesExcept position model.form)
                 , rangeSelectionPosition = position
                 , slider = Model.initialRangeSlider
+                , suitSelection = Nothing
               }
             , Cmd.none
             )
 
         CloseRangeSelectionModal ->
-            ( { model | rangeSelectionModalVisibility = Modal.hidden, rangeSelection = [], blockedCombosForRangeSelection = [], suitSelection = Nothing }, Cmd.none )
+            ( { model
+                | rangeSelectionModalVisibility = Modal.hidden
+                , rangeSelection = []
+                , blockedCombosForRangeSelection = []
+                , suitSelection = Nothing
+              }
+            , Cmd.none
+            )
 
         ConfirmRangeSelection ->
             confirmRangeSelection model.rangeSelectionPosition model
@@ -592,7 +600,7 @@ toggleHandSelection hand model =
                             ++ comboSelection suitSelection
     in
     { model
-        | rangeSelection = rangeSelection
+        | rangeSelection = rangeSelection |> List.Extra.unique
         , ignoreRangeHoverState = True
         , slider = Model.initialRangeSlider
     }

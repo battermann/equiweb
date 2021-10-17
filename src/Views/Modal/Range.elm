@@ -15,7 +15,6 @@ import Html.Attributes
 import Html.Events
 import Model exposing (Model, Msg(..))
 import Poker.Hand as Hand exposing (Hand)
-import Poker.HandOrCombo as HandOrCombo
 import Poker.Position as Position exposing (Position(..))
 import Poker.Ranges as Ranges
 import Poker.Suit as Suit exposing (Suit(..))
@@ -63,8 +62,7 @@ view model =
                                             )
                                     )
                              )
-                                ++ [ Views.RangePercentageCardRemoval.view (model.rangeSelection |> List.map HandOrCombo.fromCombo) ]
-                             -- ++ [ Views.RangePercentage.viewWithCardRemoval model.rangeSelectionPosition model ]
+                                ++ Views.RangePercentageCardRemoval.viewUnblocked model.rangeSelection model.blockedCombosForRangeSelection
                             )
                         ]
                     ]
@@ -292,29 +290,29 @@ rangeSelectState hand model =
 cellView : SelectState -> String -> Hand -> Html Msg
 cellView cs size hand =
     let
-        ( ( fontColor, color, opacity ), maybeNum ) =
+        ( fontColor, color, opacity ) =
             case cs of
-                Selected num ->
-                    ( ( "white", "#9b5378", "1" ), Just num )
+                Selected _ ->
+                    ( "white", "#9b5378", "1" )
 
                 NotSelected ->
                     if hand |> Hand.isOffsuit then
-                        ( ( "#aaaaaa", "#eeeeee", "1" ), Nothing )
+                        ( "#aaaaaa", "#eeeeee", "1" )
 
                     else if hand |> Hand.isSuited then
-                        ( ( "#aaaaaa", "#dddddd", "1" ), Nothing )
+                        ( "#aaaaaa", "#dddddd", "1" )
 
                     else
-                        ( ( "#aaaaaa", "#cccccc", "1" ), Nothing )
+                        ( "#aaaaaa", "#cccccc", "1" )
 
                 MouseOver ->
-                    ( ( "white", "#9b5378", "0.5" ), Nothing )
+                    ( "white", "#9b5378", "0.5" )
 
-                PartiallySelected num ->
-                    ( ( "white", "#db9713", "1" ), Just num )
+                PartiallySelected _ ->
+                    ( "white", "#db9713", "1" )
 
-                MouseOverDuringSuitSelection numSuited numPairs numOffsuit ->
-                    ( ( "white", "#db9713", "0.5" ), Just (hand |> Hand.fold (always numPairs) (always (always numSuited)) (always (always numOffsuit))) )
+                MouseOverDuringSuitSelection _ _ _ ->
+                    ( "white", "#db9713", "0.5" )
     in
     Html.div
         [ Html.Attributes.style "width" size
@@ -335,7 +333,7 @@ cellView cs size hand =
             , Svg.Attributes.height "100%"
             , Svg.Attributes.viewBox "0 0 100 100"
             ]
-            ([ Svg.rect
+            [ Svg.rect
                 [ Svg.Attributes.x "0"
                 , Svg.Attributes.y "0"
                 , Svg.Attributes.width "100"
@@ -345,7 +343,7 @@ cellView cs size hand =
                 , Svg.Attributes.fill color
                 ]
                 []
-             , Svg.text_
+            , Svg.text_
                 [ Svg.Attributes.x "50"
                 , Svg.Attributes.y "50"
                 , Svg.Attributes.fill fontColor
@@ -354,22 +352,5 @@ cellView cs size hand =
                 , Svg.Attributes.dominantBaseline "middle"
                 ]
                 [ Svg.text (hand |> Hand.toString) ]
-             ]
-                ++ (case maybeNum of
-                        Just num ->
-                            [ Svg.text_
-                                [ Svg.Attributes.x "78"
-                                , Svg.Attributes.y "20"
-                                , Svg.Attributes.fill "#dddddd"
-                                , Svg.Attributes.fontSize "27"
-                                , Svg.Attributes.textAnchor "middle"
-                                , Svg.Attributes.dominantBaseline "middle"
-                                ]
-                                [ Svg.text (num |> String.fromInt) ]
-                            ]
-
-                        Nothing ->
-                            []
-                   )
-            )
+            ]
         ]
