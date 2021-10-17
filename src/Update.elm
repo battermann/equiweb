@@ -13,6 +13,7 @@ import List.Extra
 import Maybe.Extra
 import Model exposing (ApiResponse, Model, Msg(..), PopoverStates, ResultLine, SimulationResult)
 import Poker.Card as Card exposing (Card)
+import Poker.CardRemoval as CardRemoval
 import Poker.Combo as Combo
 import Poker.Hand as Hand exposing (Hand)
 import Poker.HandOrCombo as HandOrCombo
@@ -52,6 +53,7 @@ update msg model =
                         , rangeSelectionModalVisibility = Modal.hidden
                         , boardSelection = []
                         , rangeSelection = []
+                        , blockedCombosForRangeSelection = []
                         , rangeSelectionPosition = UTG
                         , cardUnderMouse = Nothing
                         , ignoreCardHoverState = False
@@ -149,6 +151,7 @@ update msg model =
             ( { model
                 | rangeSelectionModalVisibility = Modal.shown
                 , rangeSelection = Form.range position model.form |> List.concatMap HandOrCombo.combos
+                , blockedCombosForRangeSelection = CardRemoval.blockedCombosForRangeSelection (Form.board model.form) (Form.allRangesExcept position model.form)
                 , rangeSelectionPosition = position
                 , slider = Model.initialRangeSlider
               }
@@ -156,7 +159,7 @@ update msg model =
             )
 
         CloseRangeSelectionModal ->
-            ( { model | rangeSelectionModalVisibility = Modal.hidden, rangeSelection = [], suitSelection = Nothing }, Cmd.none )
+            ( { model | rangeSelectionModalVisibility = Modal.hidden, rangeSelection = [], blockedCombosForRangeSelection = [], suitSelection = Nothing }, Cmd.none )
 
         ConfirmRangeSelection ->
             confirmRangeSelection model.rangeSelectionPosition model
@@ -174,7 +177,7 @@ update msg model =
             ( { model | mouse = Model.Released }, Cmd.none )
 
         ClearRange ->
-            ( { model | rangeSelection = [], suitSelection = Nothing, slider = Model.initialRangeSlider }, Cmd.none )
+            ( { model | rangeSelection = [], blockedCombosForRangeSelection = [], suitSelection = Nothing, slider = Model.initialRangeSlider }, Cmd.none )
 
         HandHover (Just hand) ->
             if model.mouse == Model.Pressed then
@@ -606,6 +609,7 @@ confirmRangeSelection position model =
         | rangeSelectionModalVisibility = Modal.hidden
         , form = form
         , rangeSelection = []
+        , blockedCombosForRangeSelection = []
         , suitSelection = Nothing
         , currentApiResponse = RemoteData.NotAsked
       }

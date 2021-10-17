@@ -1,5 +1,6 @@
 module Form exposing
     ( RangesForm
+    , allRangesExcept
     , board
     , boardField
     , clearBoard

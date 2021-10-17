@@ -1,4 +1,4 @@
-module Poker.CardRemoval exposing (numberOfCombos, unblocked)
+module Poker.CardRemoval exposing (blockedCombosForRangeSelection, numberOfCombos, unblocked)
 
 import List.Extra
 import Poker.Board as Board
@@ -94,6 +94,19 @@ numberOfCombos : List Combo -> Board -> List (List HandOrCombo) -> Int
 numberOfCombos combos board ranges =
     combos
         |> List.Extra.count
+            (unblocked board
+                (ranges
+                    |> List.map (List.concatMap HandOrCombo.combos)
+                    |> List.Extra.filterNot List.isEmpty
+                    |> filteredByBoard board
+                )
+            )
+
+
+blockedCombosForRangeSelection : Board -> List (List HandOrCombo) -> List Combo
+blockedCombosForRangeSelection board ranges =
+    Combo.all
+        |> List.Extra.filterNot
             (unblocked board
                 (ranges
                     |> List.map (List.concatMap HandOrCombo.combos)

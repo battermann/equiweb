@@ -114,6 +114,7 @@ type alias Model =
     , rangeSelectionModalVisibility : Modal.Visibility
     , boardSelection : List Card
     , rangeSelection : List Combo
+    , blockedCombosForRangeSelection : List Combo
     , rangeSelectionPosition : Position
     , cardUnderMouse : Maybe Card
     , ignoreCardHoverState : Bool
@@ -172,6 +173,7 @@ init send flags url key =
     , rangeSelectionModalVisibility = Modal.hidden
     , boardSelection = []
     , rangeSelection = []
+    , blockedCombosForRangeSelection = []
     , rangeSelectionPosition = UTG
     , cardUnderMouse = Nothing
     , ignoreCardHoverState = False
