@@ -57,7 +57,7 @@ unblocked board ranges combo =
         True
 
     else
-        unblockedByRanges [ combo ] (filteredByBoard board ranges)
+        unblockedByRanges [ combo ] ranges
 
 
 unblockedByRanges : List Combo -> List Range -> Bool
@@ -98,5 +98,6 @@ numberOfCombos combos board ranges =
                 (ranges
                     |> List.map (List.concatMap HandOrCombo.combos)
                     |> List.Extra.filterNot List.isEmpty
+                    |> filteredByBoard board
                 )
             )

@@ -202,18 +202,22 @@ rewrite position (RangesForm form) =
 validateForm : RangesForm -> Result (List String) RangesForm
 validateForm (RangesForm form) =
     Ok (\_ _ _ _ _ _ _ -> RangesForm form)
-        |> Form.Field.apply (form.utg.validated |> Result.Extra.mapBoth (always [ "The UTG range is not a valid range." ]) identity)
-        |> Form.Field.apply (form.mp.validated |> Result.Extra.mapBoth (always [ "The MP range is not a valid range." ]) identity)
-        |> Form.Field.apply (form.co.validated |> Result.Extra.mapBoth (always [ "The CO range is not a valid range." ]) identity)
-        |> Form.Field.apply (form.bu.validated |> Result.Extra.mapBoth (always [ "The BU range is not a valid range." ]) identity)
-        |> Form.Field.apply (form.sb.validated |> Result.Extra.mapBoth (always [ "The SB range is not a valid range." ]) identity)
-        |> Form.Field.apply (form.bb.validated |> Result.Extra.mapBoth (always [ "The BB range is not a valid range." ]) identity)
-        |> Form.Field.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board." ]) identity)
-        |> Result.Extra.filter [ "" ] noConflictingCardRemoval
+        |> Form.Field.apply (form.utg.validated |> Result.Extra.mapBoth (always [ "The UTG range is not a valid range" ]) identity)
+        |> Form.Field.apply (form.mp.validated |> Result.Extra.mapBoth (always [ "The MP range is not a valid range" ]) identity)
+        |> Form.Field.apply (form.co.validated |> Result.Extra.mapBoth (always [ "The CO range is not a valid range" ]) identity)
+        |> Form.Field.apply (form.bu.validated |> Result.Extra.mapBoth (always [ "The BU range is not a valid range" ]) identity)
+        |> Form.Field.apply (form.sb.validated |> Result.Extra.mapBoth (always [ "The SB range is not a valid range" ]) identity)
+        |> Form.Field.apply (form.bb.validated |> Result.Extra.mapBoth (always [ "The BB range is not a valid range" ]) identity)
+        |> Form.Field.apply (form.board.validated |> Result.Extra.mapBoth (always [ "The board is not a valid board" ]) identity)
+        |> Result.Extra.filter [ "The ranges are not valid due to conflicting card removal effects" ] noConflictingCardRemoval
 
 
 noConflictingCardRemoval : RangesForm -> Bool
-noConflictingCardRemoval (RangesForm form) =
+noConflictingCardRemoval rangesForm =
+    let
+        (RangesForm form) =
+            updateNumberOfCombos rangesForm
+    in
     (String.isEmpty form.utg.value || form.numberOfCombos.utg > 0)
         && (String.isEmpty form.mp.value || form.numberOfCombos.mp > 0)
         && (String.isEmpty form.co.value || form.numberOfCombos.co > 0)
