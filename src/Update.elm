@@ -67,10 +67,10 @@ update msg model =
 
         ApiResponseReceived result ->
             handleApiResponse model result
-                |> updateUrl
 
         SendSimulationRequest ->
             sendSimulationRequest model
+                |> updateUrl
 
         RangeInput position str ->
             ( { model
@@ -484,7 +484,7 @@ update msg model =
                         model.form
 
                 rangeSelectionWithCardRemoval =
-                    if model.rangeSelectionModalVisibility == Modal.shown then
+                    if model.rangeSelectionModalVisibility == Modal.shown && Bounce.steady newBounce then
                         model.rangeSelection
                             |> List.Extra.filterNot (\c -> List.member c model.blockedCombosForRangeSelection)
 
@@ -670,8 +670,8 @@ confirmRangeSelection position model =
     )
 
 
-updateUrl : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-updateUrl ( model, cmd ) =
+makeUrl : Model -> String
+makeUrl model =
     let
         rangeQueryParameter position field =
             case field.validated of
@@ -695,21 +695,21 @@ updateUrl ( model, cmd ) =
                 Ok cards ->
                     [ Url.Builder.string "board" (cards |> List.map Card.toString |> String.concat |> String.toLower) ]
     in
+    Url.Builder.absolute []
+        (rangeQueryParameter UTG (Form.rangeField UTG model.form)
+            ++ rangeQueryParameter MP (Form.rangeField MP model.form)
+            ++ rangeQueryParameter CO (Form.rangeField CO model.form)
+            ++ rangeQueryParameter BU (Form.rangeField BU model.form)
+            ++ rangeQueryParameter SB (Form.rangeField SB model.form)
+            ++ rangeQueryParameter BB (Form.rangeField BB model.form)
+            ++ boardQueryParameter (Form.boardField model.form)
+        )
+
+
+updateUrl : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updateUrl ( model, cmd ) =
     if model.form |> Form.validateForm |> Result.Extra.isOk then
-        Cmd.batch
-            [ cmd
-            , Navigation.pushUrl model.navKey
-                (Url.Builder.absolute []
-                    (rangeQueryParameter UTG (Form.rangeField UTG model.form)
-                        ++ rangeQueryParameter MP (Form.rangeField MP model.form)
-                        ++ rangeQueryParameter CO (Form.rangeField CO model.form)
-                        ++ rangeQueryParameter BU (Form.rangeField BU model.form)
-                        ++ rangeQueryParameter SB (Form.rangeField SB model.form)
-                        ++ rangeQueryParameter BB (Form.rangeField BB model.form)
-                        ++ boardQueryParameter (Form.boardField model.form)
-                    )
-                )
-            ]
+        Cmd.batch [ cmd, Navigation.pushUrl model.navKey (makeUrl model) ]
             |> Tuple.pair model
 
     else

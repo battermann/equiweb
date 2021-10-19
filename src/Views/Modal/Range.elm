@@ -254,11 +254,11 @@ rangeSelectState : Hand -> Model -> SelectState
 rangeSelectState hand model =
     let
         range =
-            if Bounce.steady model.bounce then
-                model.rangeSelectionWithCardRemoval
+            if Bounce.steady model.bounce |> not then
+                model.rangeSelection
 
             else
-                model.rangeSelection
+                model.rangeSelectionWithCardRemoval
     in
     case model.handUnderMouse of
         Just handUnderMouse ->
