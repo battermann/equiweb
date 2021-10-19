@@ -54,6 +54,7 @@ update msg model =
                         , boardSelection = []
                         , rangeSelection = []
                         , blockedCombosForRangeSelection = []
+                        , rangeSelectionWithCardRemoval = []
                         , rangeSelectionPosition = UTG
                         , cardUnderMouse = Nothing
                         , ignoreCardHoverState = False
@@ -148,10 +149,22 @@ update msg model =
             ( { model | boardSelection = [] }, Cmd.none )
 
         ShowRangeSelectionModal position ->
+            let
+                rangeSelection =
+                    Form.range position model.form |> List.concatMap HandOrCombo.combos
+
+                blockedCombosForRangeSelection =
+                    CardRemoval.blockedCombosForRangeSelection (Form.board model.form) (Form.allRangesExcept position model.form)
+
+                rangeSelectionWithCardRemoval =
+                    rangeSelection
+                        |> List.Extra.filterNot (\c -> List.member c blockedCombosForRangeSelection)
+            in
             ( { model
                 | rangeSelectionModalVisibility = Modal.shown
-                , rangeSelection = Form.range position model.form |> List.concatMap HandOrCombo.combos
-                , blockedCombosForRangeSelection = CardRemoval.blockedCombosForRangeSelection (Form.board model.form) (Form.allRangesExcept position model.form)
+                , rangeSelection = rangeSelection
+                , blockedCombosForRangeSelection = blockedCombosForRangeSelection
+                , rangeSelectionWithCardRemoval = rangeSelectionWithCardRemoval
                 , rangeSelectionPosition = position
                 , slider = Model.initialRangeSlider
                 , suitSelection = Nothing
@@ -164,6 +177,7 @@ update msg model =
                 | rangeSelectionModalVisibility = Modal.hidden
                 , rangeSelection = []
                 , blockedCombosForRangeSelection = []
+                , rangeSelectionWithCardRemoval = []
                 , suitSelection = Nothing
               }
             , Cmd.none
@@ -176,7 +190,7 @@ update msg model =
         MouseDown ->
             case model.handUnderMouse of
                 Just hand ->
-                    ( toggleHandSelection hand { model | mouse = Model.Pressed }, Cmd.none )
+                    toggleHandSelection hand { model | mouse = Model.Pressed }
 
                 Nothing ->
                     ( { model | mouse = Model.Pressed }, Cmd.none )
@@ -185,11 +199,18 @@ update msg model =
             ( { model | mouse = Model.Released }, Cmd.none )
 
         ClearRange ->
-            ( { model | rangeSelection = [], blockedCombosForRangeSelection = [], suitSelection = Nothing, slider = Model.initialRangeSlider }, Cmd.none )
+            ( { model
+                | rangeSelection = []
+                , rangeSelectionWithCardRemoval = []
+                , suitSelection = Nothing
+                , slider = Model.initialRangeSlider
+              }
+            , Cmd.none
+            )
 
         HandHover (Just hand) ->
             if model.mouse == Model.Pressed then
-                ( toggleHandSelection hand { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }, Cmd.none )
+                toggleHandSelection hand { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }
 
             else
                 ( { model | handUnderMouse = Just hand, ignoreRangeHoverState = False }, Cmd.none )
@@ -204,6 +225,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         SelectSuitedAces ->
             ( { model
@@ -212,6 +234,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         SelectSuitedBroadways ->
             ( { model
@@ -220,6 +243,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         SelectOffsuitAces ->
             ( { model
@@ -228,6 +252,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         SelectOffsuitBroadways ->
             ( { model
@@ -236,6 +261,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         RangeDropdownMsg position state ->
             case position of
@@ -333,6 +359,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         RemoveBoard ->
             ( { model | form = Form.clearBoard model.form }, Cmd.none )
@@ -404,6 +431,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         DoubleSliderHighChange str ->
             let
@@ -416,6 +444,7 @@ update msg model =
               }
             , Cmd.none
             )
+                |> triggerBounce
 
         ToggleSuitSelection ->
             ( { model
@@ -445,12 +474,24 @@ update msg model =
 
                 form =
                     if Bounce.steady newBounce then
-                        Form.updateNumberOfCombos model.form
+                        if model.rangeSelectionModalVisibility /= Modal.shown then
+                            Form.updateNumberOfCombos model.form
+
+                        else
+                            model.form
 
                     else
                         model.form
+
+                rangeSelectionWithCardRemoval =
+                    if model.rangeSelectionModalVisibility == Modal.shown then
+                        model.rangeSelection
+                            |> List.Extra.filterNot (\c -> List.member c model.blockedCombosForRangeSelection)
+
+                    else
+                        []
             in
-            ( { model | bounce = newBounce, form = form }, Cmd.none )
+            ( { model | bounce = newBounce, form = form, rangeSelectionWithCardRemoval = rangeSelectionWithCardRemoval }, Cmd.none )
 
 
 triggerBounce : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -562,7 +603,7 @@ updatePopoverState f position model =
             { model | popoverStateBb = f model.popoverStateBb }
 
 
-toggleHandSelection : Hand -> Model -> Model
+toggleHandSelection : Hand -> Model -> ( Model, Cmd Msg )
 toggleHandSelection hand model =
     let
         comboSelection suitSelection =
@@ -599,11 +640,14 @@ toggleHandSelection hand model =
                         (model.rangeSelection |> List.filter (\c -> hand |> Hand.combos |> List.member c |> not))
                             ++ comboSelection suitSelection
     in
-    { model
+    ( { model
         | rangeSelection = rangeSelection |> List.Extra.unique
         , ignoreRangeHoverState = True
         , slider = Model.initialRangeSlider
-    }
+      }
+    , Cmd.none
+    )
+        |> triggerBounce
 
 
 confirmRangeSelection : Position -> Model -> ( Model, Cmd Msg )
@@ -618,6 +662,7 @@ confirmRangeSelection position model =
         , form = form
         , rangeSelection = []
         , blockedCombosForRangeSelection = []
+        , rangeSelectionWithCardRemoval = []
         , suitSelection = Nothing
         , currentApiResponse = RemoteData.NotAsked
       }

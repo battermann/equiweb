@@ -8,6 +8,7 @@ import Bootstrap.Grid as Grid
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
+import Bounce
 import DoubleSlider as Slider
 import Form
 import Html exposing (Html)
@@ -62,7 +63,7 @@ view model =
                                             )
                                     )
                              )
-                                ++ Views.RangePercentageCardRemoval.viewUnblocked model.rangeSelection model.blockedCombosForRangeSelection
+                                ++ Views.RangePercentageCardRemoval.view (model.rangeSelectionWithCardRemoval |> List.length)
                             )
                         ]
                     ]
@@ -251,6 +252,14 @@ offsuitSuitSelectionView suits =
 
 rangeSelectState : Hand -> Model -> SelectState
 rangeSelectState hand model =
+    let
+        range =
+            if Bounce.steady model.bounce then
+                model.rangeSelectionWithCardRemoval
+
+            else
+                model.rangeSelection
+    in
     case model.handUnderMouse of
         Just handUnderMouse ->
             if handUnderMouse == hand && not model.ignoreRangeHoverState then
@@ -265,7 +274,7 @@ rangeSelectState hand model =
                             (suitSelection.offsuit |> List.length)
 
             else
-                case model.rangeSelection |> Hand.numCombosOfHand hand of
+                case range |> Hand.numCombosOfHand hand of
                     Hand.All n ->
                         Selected n
 
@@ -276,7 +285,7 @@ rangeSelectState hand model =
                         PartiallySelected n
 
         Nothing ->
-            case model.rangeSelection |> Hand.numCombosOfHand hand of
+            case range |> Hand.numCombosOfHand hand of
                 Hand.All n ->
                     Selected n
 
@@ -290,29 +299,29 @@ rangeSelectState hand model =
 cellView : SelectState -> String -> Hand -> Html Msg
 cellView cs size hand =
     let
-        ( fontColor, color, opacity ) =
+        ( ( fontColor, color, opacity ), maybeNum ) =
             case cs of
-                Selected _ ->
-                    ( "white", "#9b5378", "1" )
+                Selected num ->
+                    ( ( "white", "#9b5378", "1" ), Just num )
 
                 NotSelected ->
                     if hand |> Hand.isOffsuit then
-                        ( "#aaaaaa", "#eeeeee", "1" )
+                        ( ( "#aaaaaa", "#eeeeee", "1" ), Nothing )
 
                     else if hand |> Hand.isSuited then
-                        ( "#aaaaaa", "#dddddd", "1" )
+                        ( ( "#aaaaaa", "#dddddd", "1" ), Nothing )
 
                     else
-                        ( "#aaaaaa", "#cccccc", "1" )
+                        ( ( "#aaaaaa", "#cccccc", "1" ), Nothing )
 
                 MouseOver ->
-                    ( "white", "#9b5378", "0.5" )
+                    ( ( "white", "#9b5378", "0.5" ), Nothing )
 
-                PartiallySelected _ ->
-                    ( "white", "#db9713", "1" )
+                PartiallySelected num ->
+                    ( ( "white", "#da7182", "1" ), Just num )
 
-                MouseOverDuringSuitSelection _ _ _ ->
-                    ( "white", "#db9713", "0.5" )
+                MouseOverDuringSuitSelection numSuited numPairs numOffsuit ->
+                    ( ( "white", "#9b5378", "0.5" ), Just (hand |> Hand.fold (always numPairs) (always (always numSuited)) (always (always numOffsuit))) )
     in
     Html.div
         [ Html.Attributes.style "width" size
@@ -333,7 +342,7 @@ cellView cs size hand =
             , Svg.Attributes.height "100%"
             , Svg.Attributes.viewBox "0 0 100 100"
             ]
-            [ Svg.rect
+            ([ Svg.rect
                 [ Svg.Attributes.x "0"
                 , Svg.Attributes.y "0"
                 , Svg.Attributes.width "100"
@@ -343,7 +352,7 @@ cellView cs size hand =
                 , Svg.Attributes.fill color
                 ]
                 []
-            , Svg.text_
+             , Svg.text_
                 [ Svg.Attributes.x "50"
                 , Svg.Attributes.y "50"
                 , Svg.Attributes.fill fontColor
@@ -352,5 +361,22 @@ cellView cs size hand =
                 , Svg.Attributes.dominantBaseline "middle"
                 ]
                 [ Svg.text (hand |> Hand.toString) ]
-            ]
+             ]
+                ++ (case maybeNum of
+                        Just num ->
+                            [ Svg.text_
+                                [ Svg.Attributes.x "78"
+                                , Svg.Attributes.y "20"
+                                , Svg.Attributes.fill "#dddddd"
+                                , Svg.Attributes.fontSize "27"
+                                , Svg.Attributes.textAnchor "middle"
+                                , Svg.Attributes.dominantBaseline "middle"
+                                ]
+                                [ Svg.text (num |> String.fromInt) ]
+                            ]
+
+                        Nothing ->
+                            []
+                   )
+            )
         ]

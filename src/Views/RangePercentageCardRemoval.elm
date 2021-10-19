@@ -1,4 +1,4 @@
-module Views.RangePercentageCardRemoval exposing (viewUnblocked, viewWithCardRemoval)
+module Views.RangePercentageCardRemoval exposing (view, viewUnblocked, viewWithCardRemoval)
 
 import Bootstrap.Form as Form
 import Bootstrap.Progress as Progress
@@ -17,12 +17,8 @@ import Round
 
 viewWithCardRemoval : Bool -> Position -> Model -> List (Html Msg)
 viewWithCardRemoval edited position model =
-    let
-        numberOfCombos =
-            Form.numberOfCombos position model.form
-    in
     if edited then
-        view numberOfCombos (Combo.percentage numberOfCombos)
+        view (Form.numberOfCombos position model.form)
 
     else
         []
@@ -30,15 +26,15 @@ viewWithCardRemoval edited position model =
 
 viewUnblocked : List Combo -> List Combo -> List (Html Msg)
 viewUnblocked combos blockers =
+    view (combos |> List.Extra.count (\combo -> List.member combo blockers |> not))
+
+
+view : Int -> List (Html Msg)
+view numberOfCombos =
     let
-        numberOfCombos =
-            combos |> List.Extra.count (\combo -> List.member combo blockers |> not)
+        percentage =
+            Combo.percentage numberOfCombos
     in
-    view numberOfCombos (Combo.percentage numberOfCombos)
-
-
-view : Int -> Float -> List (Html Msg)
-view numberOfCombos percentage =
     [ Form.help []
         [ Html.div [ Spacing.mt1 ]
             [ Progress.progress

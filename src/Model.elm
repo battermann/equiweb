@@ -115,6 +115,7 @@ type alias Model =
     , boardSelection : List Card
     , rangeSelection : List Combo
     , blockedCombosForRangeSelection : List Combo
+    , rangeSelectionWithCardRemoval : List Combo
     , rangeSelectionPosition : Position
     , cardUnderMouse : Maybe Card
     , ignoreCardHoverState : Bool
@@ -174,6 +175,7 @@ init send flags url key =
     , boardSelection = []
     , rangeSelection = []
     , blockedCombosForRangeSelection = []
+    , rangeSelectionWithCardRemoval = []
     , rangeSelectionPosition = UTG
     , cardUnderMouse = Nothing
     , ignoreCardHoverState = False
