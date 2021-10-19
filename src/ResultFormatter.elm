@@ -1,0 +1,122 @@
+module ResultFormatter exposing (markdown, pokerStrategy, twoPlusTwo)
+
+import Maybe.Extra
+import Model exposing (ResultLine, SimulationResult)
+import Poker.Board as Board
+import Poker.Card exposing (Card)
+import Poker.HandOrCombo as Range
+import Poker.Position as Position exposing (Position(..))
+import Round
+import Url exposing (Url)
+
+
+lines : SimulationResult -> List ( Position, ResultLine )
+lines simulationResult =
+    [ simulationResult.utg |> Maybe.map (Tuple.pair UTG)
+    , simulationResult.mp |> Maybe.map (Tuple.pair MP)
+    , simulationResult.co |> Maybe.map (Tuple.pair CO)
+    , simulationResult.bu |> Maybe.map (Tuple.pair BU)
+    , simulationResult.sb |> Maybe.map (Tuple.pair SB)
+    , simulationResult.bb |> Maybe.map (Tuple.pair BB)
+    ]
+        |> Maybe.Extra.values
+
+
+markdownResultLine : ( Position, ResultLine ) -> String
+markdownResultLine ( position, resultLine ) =
+    """| {{POSITION}} | {{RANGE}} | {{EQUITY}}% |"""
+        |> String.replace "{{POSITION}}" (position |> Position.toString)
+        |> String.replace "{{RANGE}}" (resultLine.range |> Range.toNormalizedString)
+        |> String.replace "{{EQUITY}}" ((resultLine.equity * 100) |> Round.round 2)
+
+
+{-| Markdown
+**Board**: KhQdTd
+| Position | Hand Range | Equity |
+| --- | --- | --- |
+| UTG | 22+,A2s+,K8s+,Q9s+,J9s+,T9s,98s,87s,76s,65s,54s,ATo+,KJo+ | 44.49% |
+| SB | 99+,ATs+,A5s,A4s,KTs+,QTs+,JTs,T9s,98s,87s,76s,AQo+ | 55.51% |
+Powered by [Equiweb - 6 Max Hold'em Equity Simulations](https://equiweb.surge.sh/?utg=22%2B%2Ca2s%2B%2Ck8s%2B%2Cq9s%2B%2Cj9s%2B%2Ct9s%2C98s%2C87s%2C76s%2C65s%2C54s%2Cato%2B%2Ckjo%2B&sb=99%2B%2Cats%2B%2Ca5s%2Ca4s%2Ckts%2B%2Cqts%2B%2Cjts%2Ct9s%2C98s%2C87s%2C76s%2Caqo%2B)
+-}
+markdown : Url -> SimulationResult -> String
+markdown url result =
+    """**Board**: {{BOARD}}
+
+| Position | Hand Range | Equity |
+| --- | --- | --- |
+{{RESULT_LINES}}
+
+Powered by [Equiweb - 6 Max Hold'em Equity Simulations]({{URL}})"""
+        |> String.replace "{{BOARD}}" (result.board |> Board.toString)
+        |> String.replace "{{RESULT_LINES}}" (result |> lines |> List.map markdownResultLine |> String.join "\n")
+        |> String.replace "{{URL}}" (url |> Url.toString)
+
+
+altBoard : List Card -> String
+altBoard board =
+    Board.toString board
+        |> String.toUpper
+        |> String.replace "S" ":spade:"
+        |> String.replace "C" ":club:"
+        |> String.replace "H" ":heart:"
+        |> String.replace "D" ":diamond:"
+
+
+twoPlusTwoLine : ( Position, ResultLine ) -> String
+twoPlusTwoLine ( position, resultLine ) =
+    """{{POSITION}} |{{RANGE}} |{{EQUITY}}%"""
+        |> String.replace "{{POSITION}}" (position |> Position.toString)
+        |> String.replace "{{RANGE}}" (resultLine.range |> Range.toNormalizedString)
+        |> String.replace "{{EQUITY}}" ((resultLine.equity * 100) |> Round.round 2)
+
+
+{-| 2+2
+[table=head]Board
+K:heart:A:spade:T:club:
+[/table][table=head]Position |Hand Range |Equity
+UTG |22+,A2s+,K8s+,Q9s+,J9s+,T9s,98s,87s,76s,65s,54s,ATo+,KJo+ |44.49%
+SB |99+,ATs+,A5s,A4s,KTs+,QTs+,JTs,T9s,98s,87s,76s,AQo+ |55.51%
+[/table]
+Powered by [URL="https://equiweb.surge.sh/?utg=22%2B%2Ca2s%2B%2Ck8s%2B%2Cq9s%2B%2Cj9s%2B%2Ct9s%2C98s%2C87s%2C76s%2C65s%2C54s%2Cato%2B%2Ckjo%2B&sb=99%2B%2Cats%2B%2Ca5s%2Ca4s%2Ckts%2B%2Cqts%2B%2Cjts%2Ct9s%2C98s%2C87s%2C76s%2Caqo%2B"]Equiweb - 6 Max Hold'em Equity Simulations[/URL]
+-}
+twoPlusTwo : Url -> SimulationResult -> String
+twoPlusTwo url result =
+    """[table=head]Board
+{{BOARD}}
+[/table]
+[table=head]Position |Hand Range |Equity
+{{RESULT_LINES}}
+[/table]
+Powered by [URL="{{URL}}"]Equiweb - 6 Max Hold'em Equity Simulations[/URL]
+"""
+        |> String.replace "{{BOARD}}" (result.board |> altBoard)
+        |> String.replace "{{RESULT_LINES}}" (result |> lines |> List.map twoPlusTwoLine |> String.join "\n")
+        |> String.replace "{{URL}}" (url |> Url.toString)
+
+
+pokerStrategyLine : ( Position, ResultLine ) -> String
+pokerStrategyLine ( position, resultLine ) =
+    """[b]{{POSITION}}[/b]{{EQUITY}}%\u{00A0}{ {{RANGE}} }"""
+        |> String.replace "{{POSITION}}" (position |> Position.toString |> String.padRight 3 '\u{00A0}')
+        |> String.replace "{{RANGE}}" (resultLine.range |> Range.toNormalizedString)
+        |> String.replace "{{EQUITY}}" ((resultLine.equity * 100) |> Round.round 2 |> String.padLeft 7 '\u{00A0}')
+
+
+{-| PokerStrategy
+[FONT=courier new][SIZE=12]
+[b]Board: [/b]K:heart:Q:heart:2:diamond: A:diamond:
+[b]Pos Equity Hand Range[/b][b]UTG[/b] 44.49% { 22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+,72o+,62o+,52o+,42o+,32o }
+[b]SB [/b] 55.51% { 99+,ATs+,A5s,A4s,KTs+,QTs+,JTs,T9s,98s,87s,76s,AQo+ }
+Powered by [url="https://equiweb.surge.sh/?utg=22%2B%2Ca2s%2B%2Ck8s%2B%2Cq9s%2B%2Cj9s%2B%2Ct9s%2C98s%2C87s%2C76s%2C65s%2C54s%2Cato%2B%2Ckjo%2B&sb=99%2B%2Cats%2B%2Ca5s%2Ca4s%2Ckts%2B%2Cqts%2B%2Cjts%2Ct9s%2C98s%2C87s%2C76s%2Caqo%2B"]Equiweb - 6 Max Hold'em Equity Simulations[/url][/SIZE][/FONT]
+-}
+pokerStrategy : Url -> SimulationResult -> String
+pokerStrategy url result =
+    """[FONT=courier new][SIZE=12]
+[b]Board: [/b]{{BOARD}}
+[b]Pos\u{00A0}Equity\u{00A0}\u{00A0}Range[/b]
+{{RESULT_LINES}}
+Powered by [url="{{URL}}"]Equiweb - 6 Max Hold'em Equity Simulations[/url]
+[/SIZE][/FONT]"""
+        |> String.replace "{{BOARD}}" (altBoard result.board |> String.replace " " "\u{00A0}")
+        |> String.replace "{{RESULT_LINES}}" (result |> lines |> List.map pokerStrategyLine |> String.join "\n")
+        |> String.replace "{{URL}}" (url |> Url.toString)
