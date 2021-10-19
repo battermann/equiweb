@@ -188,7 +188,6 @@ i {
   pointer-events: all;
   z-index: 2;
   position: relative;
-  z-index: 2;
 }
 
 .slider-thumb--first {
@@ -201,10 +200,12 @@ i {
 
 .input-range--first {
   position: absolute;
+  z-index: 2;
 }
 
 .input-range--second {
   position: relative;
+  z-index: 2;
 }
 
 .input-range__track,
