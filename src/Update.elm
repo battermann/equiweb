@@ -63,6 +63,7 @@ update msg model =
                         , ignoreRangeHoverState = False
                         , location = url
                         , suitSelection = Nothing
+                        , currentApiResponse = RemoteData.NotAsked
                     }
 
         ApiResponseReceived result ->
