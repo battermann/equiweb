@@ -298,7 +298,7 @@ rangeInputView model position result dropdownState ranges =
                                     [ Html.text "Select Range" ]
                                 |> Popover.view popoverStates.rangeSelect
                             ]
-                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper", Html.Attributes.class "z-index-0" ]
+                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
                             [ Popover.config
                                 (Button.button
                                     [ Button.outlineSecondary
@@ -312,7 +312,7 @@ rangeInputView model position result dropdownState ranges =
                                     [ Html.text "Open Grid Dialog" ]
                                 |> Popover.view popoverStates.openGrid
                             ]
-                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper", Html.Attributes.class "z-index-0" ]
+                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
                             [ Popover.config
                                 (Html.div (Popover.onHover popoverStates.normalize (PopoverStateNormalize position))
                                     [ Button.button
@@ -329,7 +329,7 @@ rangeInputView model position result dropdownState ranges =
                                     [ Html.text "Normalize Range" ]
                                 |> Popover.view popoverStates.normalize
                             ]
-                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper", Html.Attributes.class "z-index-0" ]
+                        , InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
                             [ Popover.config
                                 (Html.div (Popover.onHover popoverStates.clear (PopoverStateClear position))
                                     [ Button.button
