@@ -108,7 +108,7 @@ initialSharingPopoverStates =
 type alias Model =
     { navKey : Navigation.Key
     , form : RangesForm
-    , currentApiResponse : WebData SimulationResult
+    , apiResponse : WebData SimulationResult
     , results : List ( SharingPopoverStates, Url, SimulationResult )
     , boardSelectModalVisibility : Modal.Visibility
     , rangeSelectionModalVisibility : Modal.Visibility
@@ -168,7 +168,7 @@ init send flags url key =
             Decode.decodeValue Decode.string flags |> Result.toMaybe
     in
     { form = maybeForm |> Maybe.withDefault Form.initialForm
-    , currentApiResponse = RemoteData.NotAsked
+    , apiResponse = RemoteData.NotAsked
     , results = []
     , boardSelectModalVisibility = Modal.hidden
     , rangeSelectionModalVisibility = Modal.hidden

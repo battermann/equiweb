@@ -63,6 +63,12 @@ update msg model =
                         , ignoreRangeHoverState = False
                         , location = url
                         , suitSelection = Nothing
+                        , apiResponse =
+                            if model.apiResponse |> RemoteData.isLoading then
+                                model.apiResponse
+
+                            else
+                                RemoteData.NotAsked
                     }
 
         ApiResponseReceived result ->
@@ -75,7 +81,7 @@ update msg model =
         RangeInput position str ->
             ( { model
                 | form = Form.setRange position str model.form
-                , currentApiResponse = RemoteData.NotAsked
+                , apiResponse = RemoteData.NotAsked
               }
             , Cmd.none
             )
@@ -84,7 +90,7 @@ update msg model =
         BoardInput str ->
             ( { model
                 | form = Form.setBoard str model.form
-                , currentApiResponse = RemoteData.NotAsked
+                , apiResponse = RemoteData.NotAsked
               }
             , Cmd.none
             )
@@ -289,7 +295,7 @@ update msg model =
         SelectPresetRange position range ->
             ( { model
                 | form = Form.setRange position range model.form |> Form.rewrite position
-                , currentApiResponse = RemoteData.NotAsked
+                , apiResponse = RemoteData.NotAsked
               }
             , Cmd.none
             )
@@ -331,7 +337,7 @@ update msg model =
                     model.results
                         |> List.reverse
                         |> List.Extra.updateAt copiedMsg.index
-                            (\( pos, url, sr ) ->
+                            (\( pos, url, simResult ) ->
                                 ( case copiedMsg.sharingType of
                                     URL ->
                                         { pos | shareUrlTooltipText = "Copied! " }
@@ -345,7 +351,7 @@ update msg model =
                                     PokerStrategy ->
                                         { pos | sharePsTooltipText = "Copied! " }
                                 , url
-                                , sr
+                                , simResult
                                 )
                             )
                         |> List.reverse
@@ -522,7 +528,7 @@ handleApiResponse model response =
                 BB ->
                     { simulationResult | bb = Just (ResultLine range equity) }
 
-        sr =
+        simResult =
             response
                 |> RemoteData.map
                     (\res ->
@@ -558,8 +564,8 @@ handleApiResponse model response =
                     )
     in
     ( { model
-        | currentApiResponse = sr
-        , results = model.results ++ (sr |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (\r -> ( Model.initialSharingPopoverStates, model.location, r )))
+        | apiResponse = simResult
+        , results = model.results ++ (simResult |> RemoteData.map List.singleton |> RemoteData.withDefault [] |> List.map (\r -> ( Model.initialSharingPopoverStates, model.location, r )))
       }
     , Cmd.none
     )
@@ -575,7 +581,7 @@ sendSimulationRequest model =
 
     else
         ( { model
-            | currentApiResponse = RemoteData.Loading
+            | apiResponse = RemoteData.Loading
           }
         , Api.sendSimulationRequest model.simulationApibaseUrl (Form.board model.form) (Form.ranges model.form)
         )
@@ -664,7 +670,7 @@ confirmRangeSelection position model =
         , blockedCombosForRangeSelection = []
         , rangeSelectionWithCardRemoval = []
         , suitSelection = Nothing
-        , currentApiResponse = RemoteData.NotAsked
+        , apiResponse = RemoteData.NotAsked
       }
     , Cmd.none
     )
@@ -722,7 +728,7 @@ confirmBoardSelection model =
         | boardSelectModalVisibility = Modal.hidden
         , form = Form.setBoard (model.boardSelection |> List.map Card.toString |> String.concat) model.form
         , boardSelection = []
-        , currentApiResponse = RemoteData.NotAsked
+        , apiResponse = RemoteData.NotAsked
       }
     , Cmd.none
     )
