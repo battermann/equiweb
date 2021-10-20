@@ -499,6 +499,23 @@ update msg model =
             in
             ( { model | bounce = newBounce, form = form, rangeSelectionWithCardRemoval = rangeSelectionWithCardRemoval }, Cmd.none )
 
+        RemoveResult index ->
+            ( { model
+                | results =
+                    model.results
+                        |> List.indexedMap Tuple.pair
+                        |> List.filterMap
+                            (\( i, result ) ->
+                                if i == (model.results |> List.length |> (\length -> length - 1 - index)) then
+                                    Nothing
+
+                                else
+                                    Just result
+                            )
+              }
+            , Cmd.none
+            )
+
 
 triggerBounce : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 triggerBounce ( model, cmd ) =

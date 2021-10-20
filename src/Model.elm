@@ -248,6 +248,7 @@ type Msg
     | RangeInput Position String
     | RangeSelectionDropdownMsg Dropdown.State
     | RemoveBoard
+    | RemoveResult Int
     | RemoveRange Position
     | RewriteRange Position
     | SelectOffsuitAces

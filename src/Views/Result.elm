@@ -106,6 +106,21 @@ view index popoverStates result =
                                 ++ rowView BB result.bb
                             )
                     }
+            , Block.custom <|
+                Html.div [ Flex.block, Flex.row, Flex.justifyEnd ]
+                    [ Button.button [ Button.danger, Button.onClick (RemoveResult index) ]
+                        [ Html.div
+                            [ Flex.block
+                            , Flex.row
+                            , Flex.justifyCenter
+                            , Flex.alignItemsCenter
+                            , Html.Attributes.style "gap" "10px"
+                            ]
+                            [ Html.i [ Html.Attributes.class "far fa-trash-alt", Html.Attributes.style "color" "white" ] []
+                            , Html.text "Remove"
+                            ]
+                        ]
+                    ]
             ]
 
 
