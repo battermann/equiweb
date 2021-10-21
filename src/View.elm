@@ -204,7 +204,7 @@ inputFormView model =
             Html.text ""
 
           else
-            Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ Button.button [ Button.light, Button.onClick ShowBoardSelectModal ] [ Views.Board.view True "pointer" "6vw" (Form.board model.form) ] ] ]
+            Form.row [ Row.attrs [ Spacing.mt2 ] ] [ Form.col [] [ Button.button [ Button.light, Button.onClick ShowBoardSelectModal ] [ Views.Board.view "pointer" "6vw" (Form.board model.form) ] ] ]
         , if (Form.ranges model.form |> List.length) < 2 then
             Alert.simpleInfo [ Spacing.mt2 ] [ Html.text "You must fill in at least 2 ranges." ]
 

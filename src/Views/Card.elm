@@ -1,4 +1,4 @@
-module Views.Card exposing (SelectState(..), view)
+module Views.Card exposing (SelectState(..), empty, view)
 
 import Html exposing (Html)
 import Html.Attributes
@@ -92,5 +92,50 @@ view msg selectState cursor refWidth card =
                 ]
                 [ Svg.text (card.rank |> Rank.toString) ]
             , Svg.g [ Svg.Attributes.transform "scale(0.16) translate(35,35)" ] [ icon "black" "0.5" ]
+            ]
+        ]
+
+
+empty : Maybe Msg -> String -> String -> Html Msg
+empty msg cursor refWidth =
+    let
+        color =
+            "black"
+
+        opacity =
+            "0.1"
+
+        width =
+            60
+
+        height =
+            width * 7.0 / 5.0
+    in
+    Html.div
+        ([ Html.Attributes.style "width" refWidth
+         , Html.Attributes.style "min-height" "38px"
+         , Html.Attributes.style "min-width" "25px"
+         , Html.Attributes.style "max-height" "80px"
+         , Html.Attributes.style "max-width" "57px"
+         , Html.Attributes.style "cursor" cursor
+         , Html.Attributes.style "opacity" opacity
+         ]
+            ++ (msg |> Maybe.map (Html.Events.onClick >> List.singleton) |> Maybe.withDefault [])
+        )
+        [ Svg.svg
+            [ Svg.Attributes.width "100%"
+            , Svg.Attributes.height "100%"
+            , Svg.Attributes.viewBox ("0 0" ++ " " ++ ((width + 1) |> String.fromFloat) ++ " " ++ ((height + 1) |> String.fromFloat))
+            ]
+            [ Svg.rect
+                [ Svg.Attributes.x "0"
+                , Svg.Attributes.y "0"
+                , Svg.Attributes.width (width |> String.fromFloat)
+                , Svg.Attributes.height (height |> String.fromFloat)
+                , Svg.Attributes.rx ((width / 5) |> String.fromFloat)
+                , Svg.Attributes.ry ((width / 5) |> String.fromFloat)
+                , Svg.Attributes.fill color
+                ]
+                []
             ]
         ]

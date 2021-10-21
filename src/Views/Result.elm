@@ -23,14 +23,14 @@ view : Int -> SharingPopoverStates -> SimulationResult -> Card.Config Msg
 view index popoverStates result =
     Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
         |> Card.headerH4 []
-            [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.alignItemsCenter ]
+            [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.alignItemsCenter, Html.Attributes.style "gap" "15px" ]
                 [ if result.board |> List.isEmpty |> not then
-                    Views.Board.view False "default" "30px" result.board
+                    Views.Board.view "default" "30px" result.board
 
                   else
                     Html.text "Preflop"
                 , Html.div []
-                    [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "3px" ]
+                    [ Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "3px", Flex.wrap, Flex.justifyEnd ]
                         [ Popover.config
                             (Button.button
                                 [ Button.outlineSecondary

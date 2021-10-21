@@ -73,7 +73,7 @@ view model =
                             []
 
                         board ->
-                            [ Html.div [ Flex.block, Flex.row, Spacing.mb2 ] [ Views.Board.view False "default" "27px" board ]
+                            [ Html.div [ Flex.block, Flex.row, Spacing.mb2 ] [ Views.Board.view "default" "27px" board ]
                             , Html.hr [] []
                             ]
                      )
