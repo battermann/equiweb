@@ -224,51 +224,6 @@ update msg model =
         HandHover Nothing ->
             ( { model | handUnderMouse = Nothing, ignoreRangeHoverState = False }, Cmd.none )
 
-        SelectPairs ->
-            ( { model
-                | rangeSelection = model.rangeSelection ++ (HandOrCombo.pairs |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
-                , slider = Model.initialRangeSlider
-              }
-            , Cmd.none
-            )
-                |> triggerBounce
-
-        SelectSuitedAces ->
-            ( { model
-                | rangeSelection = model.rangeSelection ++ (HandOrCombo.suitedAces |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
-                , slider = Model.initialRangeSlider
-              }
-            , Cmd.none
-            )
-                |> triggerBounce
-
-        SelectSuitedBroadways ->
-            ( { model
-                | rangeSelection = model.rangeSelection ++ (HandOrCombo.suitedBroadways |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
-                , slider = Model.initialRangeSlider
-              }
-            , Cmd.none
-            )
-                |> triggerBounce
-
-        SelectOffsuitAces ->
-            ( { model
-                | rangeSelection = model.rangeSelection ++ (HandOrCombo.offsuitAces |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
-                , slider = Model.initialRangeSlider
-              }
-            , Cmd.none
-            )
-                |> triggerBounce
-
-        SelectOffsuitBroadways ->
-            ( { model
-                | rangeSelection = model.rangeSelection ++ (HandOrCombo.offsuitBroadways |> List.concatMap HandOrCombo.combos) |> List.Extra.unique
-                , slider = Model.initialRangeSlider
-              }
-            , Cmd.none
-            )
-                |> triggerBounce
-
         RangeDropdownMsg position state ->
             case position of
                 UTG ->

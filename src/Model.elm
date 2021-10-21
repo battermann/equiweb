@@ -251,13 +251,8 @@ type Msg
     | RemoveResult Int
     | RemoveRange Position
     | RewriteRange Position
-    | SelectOffsuitAces
-    | SelectOffsuitBroadways
-    | SelectPairs
     | SelectPresetRange Position String
     | SelectRange String
-    | SelectSuitedAces
-    | SelectSuitedBroadways
     | SendSimulationRequest
     | ShowBoardSelectModal
     | ShowRangeSelectionModal Position
