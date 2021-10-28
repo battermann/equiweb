@@ -1,20 +1,18 @@
-module Poker.Board exposing (blocks, parser, toString, validate)
+module Poker.Board exposing (flopGenerator, parser, toString, validate)
 
 import List.Extra
 import Parser exposing ((|.), (|=), Parser)
 import Poker.Card as Card exposing (Card)
-import Poker.Combo as Combo exposing (Combo)
+import Poker.CardRemoval as CardRemoval
+import Poker.HandOrCombo exposing (HandOrCombo)
+import Random exposing (Generator)
+import Random.List
 import Result.Extra
-
-
-blocks : Combo -> List Card -> Bool
-blocks combo =
-    List.any (\card -> combo |> Combo.contains card)
 
 
 validate : String -> Result (List String) (List Card)
 validate board =
-    Parser.run parser (board |> String.replace " " "")
+    Parser.run parser (board |> String.replace " " "" |> String.replace "," "")
         |> Result.Extra.mapBoth (always [ "Board not valid" ]) identity
         |> Result.Extra.filter [ "The same card cannot appear multiple times" ]
             (\xs -> List.Extra.unique xs == xs)
@@ -82,3 +80,8 @@ toString cards =
 
         _ ->
             ""
+
+
+flopGenerator : List (List HandOrCombo) -> Generator (List Card)
+flopGenerator ranges =
+    CardRemoval.unblockedCards ranges Card.all |> Random.List.shuffle |> Random.map (List.take 3)

@@ -1,7 +1,6 @@
-module Poker.CardRemoval exposing (blockedCombosForRangeSelection, numberOfCombos, unblocked)
+module Poker.CardRemoval exposing (blockedCombosForRangeSelection, numberOfCombos, unblocked, unblockedCards)
 
 import List.Extra
-import Poker.Board as Board
 import Poker.Card exposing (Card)
 import Poker.Combo as Combo exposing (Combo)
 import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
@@ -9,6 +8,11 @@ import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
 
 type alias Board =
     List Card
+
+
+blocks : Combo -> List Card -> Bool
+blocks combo =
+    List.any (\card -> combo |> Combo.contains card)
 
 
 type alias Range =
@@ -42,7 +46,7 @@ removeBigRanges ranges =
 filteredByBoard : Board -> List Range -> List Range
 filteredByBoard board ranges =
     ranges
-        |> List.map (List.filter (\com -> board |> Board.blocks com |> not))
+        |> List.map (List.filter (\com -> board |> blocks com |> not))
         |> List.Extra.filterNot List.isEmpty
         |> List.sortBy List.length
         |> removeBigRanges
@@ -50,11 +54,8 @@ filteredByBoard board ranges =
 
 unblocked : Board -> List Range -> Combo -> Bool
 unblocked board ranges combo =
-    if board |> Board.blocks combo then
+    if board |> blocks combo then
         False
-
-    else if ranges |> List.isEmpty then
-        True
 
     else
         unblockedByRanges [ combo ] ranges
@@ -67,7 +68,7 @@ unblockedByRanges combos ranges =
             True
 
         currentRange :: remainingRanges ->
-            case currentRange |> firstUnBlocked combos of
+            case currentRange |> firstUnblocked combos of
                 Just ( combo, remainingCombos ) ->
                     unblockedByRanges (combo :: combos) remainingRanges
                         || unblockedByRanges combos (remainingCombos :: remainingRanges)
@@ -76,9 +77,9 @@ unblockedByRanges combos ranges =
                     False
 
 
-firstUnBlocked : List Combo -> List Combo -> Maybe ( Combo, List Combo )
-firstUnBlocked combos ranges =
-    case ranges of
+firstUnblocked : List Combo -> List Combo -> Maybe ( Combo, List Combo )
+firstUnblocked combos range =
+    case range of
         [] ->
             Nothing
 
@@ -87,7 +88,7 @@ firstUnBlocked combos ranges =
                 Just ( headCombo, tailCombos )
 
             else
-                firstUnBlocked combos tailCombos
+                firstUnblocked combos tailCombos
 
 
 numberOfCombos : List Combo -> Board -> List (List HandOrCombo) -> Int
@@ -114,3 +115,65 @@ blockedCombosForRangeSelection board ranges =
                     |> filteredByBoard board
                 )
             )
+
+
+unblockedCards : List (List HandOrCombo) -> List Card -> List Card
+unblockedCards ranges =
+    List.filter
+        (cardUnblockedByRanges []
+            (ranges
+                |> List.map (List.concatMap HandOrCombo.combos)
+                |> List.Extra.filterNot List.isEmpty
+                |> removeBigRangesForSingleCardRemoval
+            )
+        )
+
+
+cardUnblockedByRanges : List Combo -> List Range -> Card -> Bool
+cardUnblockedByRanges combos ranges card =
+    case ranges of
+        [] ->
+            True
+
+        currentRange :: remainingRanges ->
+            case currentRange |> firstUnblockedGivenCardAndCombos card combos of
+                Just ( combo, remainingCombos ) ->
+                    cardUnblockedByRanges (combo :: combos) remainingRanges card
+                        || cardUnblockedByRanges combos (remainingCombos :: remainingRanges) card
+
+                Nothing ->
+                    False
+
+
+firstUnblockedGivenCardAndCombos : Card -> List Combo -> List Combo -> Maybe ( Combo, List Combo )
+firstUnblockedGivenCardAndCombos card combos range =
+    case range of
+        [] ->
+            Nothing
+
+        headCombo :: tailCombos ->
+            let
+                combosHaveNoBlockers =
+                    combos |> List.any (Combo.hasBlocker headCombo) |> not
+
+                cardHasNoBlockers =
+                    headCombo |> Combo.contains card |> not
+            in
+            if combosHaveNoBlockers && cardHasNoBlockers then
+                Just ( headCombo, tailCombos )
+
+            else
+                firstUnblockedGivenCardAndCombos card combos tailCombos
+
+
+removeBigRangesForSingleCardRemoval : List Range -> List Range
+removeBigRangesForSingleCardRemoval ranges =
+    let
+        filteredRanges =
+            ranges |> List.filter (\range -> (range |> List.length) <= (List.length ranges * 14))
+    in
+    if List.length ranges == List.length filteredRanges then
+        filteredRanges
+
+    else
+        removeBigRanges filteredRanges

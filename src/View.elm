@@ -179,6 +179,22 @@ inputFormView model =
                                 ]
                             , InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
                                 [ Popover.config
+                                    (Html.div (Popover.onHover model.popoverStateRandomFlop PopoverStateRandomFlop)
+                                        [ Button.button
+                                            [ Button.outlineSecondary
+                                            , Button.attrs [ Html.Attributes.tabindex -1 ]
+                                            , Button.onClick GenerateRandomFlop
+                                            ]
+                                            [ Html.i [ Html.Attributes.class "fas fa-random" ] [] ]
+                                        ]
+                                    )
+                                    |> Popover.top
+                                    |> Popover.content []
+                                        [ Html.text "Random Flop" ]
+                                    |> Popover.view model.popoverStateRandomFlop
+                                ]
+                            , InputGroup.span [ Html.Attributes.class "tooltip-wrapper" ]
+                                [ Popover.config
                                     (Html.div (Popover.onHover model.popoverStateClearBoard PopoverStateClearBoard)
                                         [ Button.button
                                             [ Button.outlineSecondary

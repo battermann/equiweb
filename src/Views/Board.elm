@@ -34,7 +34,10 @@ view cursor width cards =
                 ]
 
             _ ->
-                []
+                [ streetView cursor width [ Nothing, Nothing, Nothing ]
+                , streetView cursor width [ Nothing ]
+                , streetView cursor width [ Nothing ]
+                ]
         )
 
 

@@ -2,6 +2,7 @@ module Poker.CardRemovalTests exposing (..)
 
 import Expect
 import Fuzz exposing (..)
+import List.Extra
 import Poker.Card as Card exposing (Card)
 import Poker.CardRemoval as CardRemoval
 import Poker.Combo as Combo exposing (Combo)
@@ -54,6 +55,72 @@ cardRemovalTests =
 
                     Nothing ->
                         Expect.fail "should not happen"
+        , test "no card blocked if ranges are empty" <|
+            \_ ->
+                let
+                    actual =
+                        CardRemoval.unblockedCards [] Card.all
+
+                    expected =
+                        Card.all
+                in
+                Expect.equal actual expected
+        , test "Ah and Kd should be blocked" <|
+            \_ ->
+                let
+                    actual =
+                        CardRemoval.unblockedCards ([ "AhKd" ] |> List.map (makeCombos >> List.map HandOrCombo.fromCombo)) Card.all |> List.sortWith Card.order
+
+                    expected =
+                        Card.all
+                            |> List.Extra.filterNot (\card -> card == Card Rank.Ace Suit.Hearts || card == Card Rank.King Suit.Diamonds)
+                            |> List.sortWith Card.order
+                in
+                Expect.equal actual expected
+        , test "No cards blocked if range contains different combos" <|
+            \_ ->
+                let
+                    actual =
+                        CardRemoval.unblockedCards ([ "AhKd,AdKh" ] |> List.map (makeCombos >> List.map HandOrCombo.fromCombo)) Card.all |> List.sortWith Card.order
+
+                    expected =
+                        Card.all |> List.sortWith Card.order
+                in
+                Expect.equal actual expected
+        , test "Ah and Kd should be blocked because all (more than one) combos contain them" <|
+            \_ ->
+                let
+                    actual =
+                        CardRemoval.unblockedCards ([ "Ah2d,Ah3h", "Kh2h,Kd2h" ] |> List.map (makeCombos >> List.map HandOrCombo.fromCombo)) Card.all |> List.sortWith Card.order
+
+                    expected =
+                        Card.all
+                            |> List.Extra.filterNot (\card -> card == Card Rank.Ace Suit.Hearts || card == Card Rank.Two Suit.Hearts)
+                            |> List.sortWith Card.order
+                in
+                Expect.equal actual expected
+        , test "transitive blocking" <|
+            \_ ->
+                let
+                    actual =
+                        CardRemoval.unblockedCards ([ "Ah5h,Kh2h", "AhTs" ] |> List.map (makeCombos >> List.map HandOrCombo.fromCombo)) Card.all |> List.sortWith Card.order
+
+                    expected =
+                        Card.all
+                            |> List.Extra.filterNot
+                                (\card ->
+                                    card
+                                        == Card Rank.Ace Suit.Hearts
+                                        || card
+                                        == Card Rank.Ten Suit.Spades
+                                        || card
+                                        == Card Rank.King Suit.Hearts
+                                        || card
+                                        == Card Rank.Two Suit.Hearts
+                                )
+                            |> List.sortWith Card.order
+                in
+                Expect.equal actual expected
         ]
 
 

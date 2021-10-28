@@ -1,5 +1,6 @@
 module Form exposing
     ( RangesForm
+    , allRanges
     , allRangesExcept
     , board
     , boardField
@@ -170,6 +171,12 @@ allRangesExcept : Position -> RangesForm -> List (List HandOrCombo)
 allRangesExcept position form =
     Position.all
         |> List.Extra.filterNot ((==) position)
+        |> List.map (\p -> range p form)
+
+
+allRanges : RangesForm -> List (List HandOrCombo)
+allRanges form =
+    Position.all
         |> List.map (\p -> range p form)
 
 

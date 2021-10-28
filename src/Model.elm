@@ -137,6 +137,7 @@ type alias Model =
     , popoverStateSb : PopoverStates
     , popoverStateBb : PopoverStates
     , popoverStateBoard : Popover.State
+    , popoverStateRandomFlop : Popover.State
     , popoverStateClearBoard : Popover.State
     , slider : Slider.DoubleSlider Msg
     , suitSelection : Maybe Suit.Selection
@@ -198,6 +199,7 @@ init send flags url key =
     , popoverStateSb = initialPopoverStates
     , popoverStateBb = initialPopoverStates
     , popoverStateBoard = Popover.initialState
+    , popoverStateRandomFlop = Popover.initialState
     , popoverStateClearBoard = Popover.initialState
     , slider = initialRangeSlider
     , suitSelection = Nothing
@@ -232,6 +234,7 @@ type Msg
     | CopyToClipboard Int SharingType
     | DoubleSliderLowChange Float
     | DoubleSliderHighChange Float
+    | GenerateRandomFlop
     | HandHover (Maybe Hand)
     | KeyDown RawKey
     | MouseDown
@@ -242,9 +245,11 @@ type Msg
     | PopoverStateClearBoard Popover.State
     | PopoverStateNormalize Position Popover.State
     | PopoverStateOpenGrid Position Popover.State
+    | PopoverStateRandomFlop Popover.State
     | PopoverStateSelectRange Position Popover.State
     | PopoverStateSharing Int SharingType Popover.State
     | RangeDropdownMsg Position Dropdown.State
+    | RandomFlop (List Card)
     | RangeInput Position String
     | RangeSelectionDropdownMsg Dropdown.State
     | RemoveBoard

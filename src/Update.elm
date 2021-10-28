@@ -12,6 +12,7 @@ import Keyboard
 import List.Extra
 import Maybe.Extra
 import Model exposing (ApiResponse, Model, Msg(..), PopoverStates, ResultLine, SimulationResult)
+import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
 import Poker.CardRemoval as CardRemoval
 import Poker.Combo as Combo
@@ -20,6 +21,7 @@ import Poker.HandOrCombo as HandOrCombo
 import Poker.Position as Position exposing (Position(..))
 import Poker.Suit as Suit exposing (Suit(..))
 import Ports exposing (SharingType(..))
+import Random
 import RemoteData exposing (WebData)
 import Result.Extra
 import ResultFormatter
@@ -341,6 +343,9 @@ update msg model =
         PopoverStateBoard state ->
             ( { model | popoverStateBoard = state }, Cmd.none )
 
+        PopoverStateRandomFlop state ->
+            ( { model | popoverStateRandomFlop = state }, Cmd.none )
+
         PopoverStateClearBoard state ->
             ( { model | popoverStateClearBoard = state }, Cmd.none )
 
@@ -470,6 +475,12 @@ update msg model =
               }
             , Cmd.none
             )
+
+        GenerateRandomFlop ->
+            ( model, Random.generate RandomFlop (Board.flopGenerator (Form.allRanges model.form)) )
+
+        RandomFlop cards ->
+            ( { model | form = Form.setBoard (cards |> List.map Card.toString |> String.concat) model.form }, Cmd.none )
 
 
 triggerBounce : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
