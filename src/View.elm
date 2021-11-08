@@ -23,6 +23,7 @@ import Form.Field exposing (Field)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
+import Kofi
 import Model exposing (Model, Msg(..), ResultLine)
 import Poker.Card as Card
 import Poker.Position exposing (Position(..))
@@ -68,10 +69,13 @@ formView model =
                 ((Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
                     |> Card.headerH2 []
                         [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
-                            [ Html.a [ Html.Attributes.href (Url.Builder.absolute [] []), Flex.block, Flex.row, Flex.alignItemsStart ]
-                                [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
-                                , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
+                            [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
+                                [ Html.a [ Html.Attributes.href (Url.Builder.absolute [] []), Flex.block, Flex.row, Flex.alignItemsStart ]
+                                    [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
+                                    , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
+                                    ]
                                 ]
+                            , Kofi.button
                             ]
                         ]
                     |> Card.block []
