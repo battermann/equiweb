@@ -189,7 +189,7 @@ inputFormView model =
                                             , Button.attrs [ Html.Attributes.tabindex -1 ]
                                             , Button.onClick GenerateRandomFlop
                                             ]
-                                            [ Html.i [ Html.Attributes.class "fas fa-random" ] [] ]
+                                            [ Html.i [ Html.Attributes.class "fas fa-dice" ] [] ]
                                         ]
                                     )
                                     |> Popover.top
