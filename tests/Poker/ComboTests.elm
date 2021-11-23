@@ -1,7 +1,6 @@
 module Poker.ComboTests exposing (..)
 
 import Expect
-import Fuzz exposing (..)
 import List.Extra
 import Parser
 import Poker.Card exposing (Card)

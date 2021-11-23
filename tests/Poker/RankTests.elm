@@ -3,7 +3,7 @@ module Poker.RankTests exposing (..)
 import Expect
 import Fuzz exposing (..)
 import Parser
-import Poker.Rank as Rank exposing (Rank(..))
+import Poker.Rank as Rank
 import Result.Extra
 import Test exposing (..)
 

@@ -7,14 +7,10 @@ module Model exposing
     , ResultLine
     , SharingPopoverStates
     , SimulationResult
-    , allRangesExcept
-    , board
     , init
-    , initialPopoverStates
     , initialRangeSlider
     , initialSharingPopoverStates
     , popoverState
-    , range
     , urlParser
     )
 
@@ -32,9 +28,9 @@ import Poker.Card exposing (Card)
 import Poker.Combo exposing (Combo)
 import Poker.Hand exposing (Hand)
 import Poker.HandOrCombo exposing (HandOrCombo)
-import Poker.Position as Position exposing (Position(..))
-import Poker.Suit as Suit exposing (Suit(..))
-import Ports exposing (CopiedToClipboardMsg, SharingType(..))
+import Poker.Position exposing (Position(..))
+import Poker.Suit as Suit exposing (Suit)
+import Ports exposing (CopiedToClipboardMsg, SharingType)
 import RemoteData exposing (WebData)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing ((<?>), Parser)
@@ -331,20 +327,3 @@ popoverState position model =
 
         BB ->
             model.popoverStateBb
-
-
-board : Model -> List Card
-board model =
-    model.form |> Form.board
-
-
-range : Position -> Model -> List HandOrCombo
-range position model =
-    model.form |> Form.range position
-
-
-allRangesExcept : Position -> Model -> List (List HandOrCombo)
-allRangesExcept position model =
-    Position.all
-        |> List.filter ((/=) position)
-        |> List.map (\p -> range p model)

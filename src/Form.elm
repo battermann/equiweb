@@ -25,7 +25,7 @@ import List.Extra
 import Maybe.Extra
 import Poker.Board as Board
 import Poker.Card as Card exposing (Card)
-import Poker.CardRemoval as CardRemoval exposing (numberOfCombos)
+import Poker.CardRemoval as CardRemoval
 import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
 import Poker.Position as Position exposing (Position(..))
 import Result.Extra

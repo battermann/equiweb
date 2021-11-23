@@ -1,7 +1,6 @@
 module Poker.CardRemovalTests exposing (..)
 
 import Expect
-import Fuzz exposing (..)
 import List.Extra
 import Poker.Card as Card exposing (Card)
 import Poker.CardRemoval as CardRemoval

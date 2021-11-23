@@ -25,11 +25,8 @@ import Html.Attributes
 import Html.Events
 import Kofi
 import Model exposing (Model, Msg(..), ResultLine)
-import Poker.Card as Card
 import Poker.Position exposing (Position(..))
 import Poker.Ranges as Ranges
-import Poker.Suit exposing (Suit(..))
-import Ports exposing (SharingType(..))
 import RemoteData
 import Result.Extra
 import Round

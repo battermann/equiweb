@@ -1,4 +1,4 @@
-module Views.RangePercentageCardRemoval exposing (view, viewUnblocked, viewWithCardRemoval)
+module Views.RangePercentageCardRemoval exposing (view, viewWithCardRemoval)
 
 import Bootstrap.Form as Form
 import Bootstrap.Progress as Progress
@@ -6,12 +6,9 @@ import Bootstrap.Utilities.Spacing as Spacing
 import Form
 import Html exposing (Html)
 import Html.Attributes
-import List.Extra
-import Model exposing (Model, Msg(..))
-import Poker.Combo as Combo exposing (Combo)
-import Poker.Position exposing (Position(..))
-import Poker.Suit exposing (Suit(..))
-import Ports exposing (SharingType(..))
+import Model exposing (Model, Msg)
+import Poker.Combo as Combo
+import Poker.Position exposing (Position)
 import Round
 
 
@@ -22,11 +19,6 @@ viewWithCardRemoval edited position model =
 
     else
         []
-
-
-viewUnblocked : List Combo -> List Combo -> List (Html Msg)
-viewUnblocked combos blockers =
-    view (combos |> List.Extra.count (\combo -> List.member combo blockers |> not))
 
 
 view : Int -> List (Html Msg)

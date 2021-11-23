@@ -7,9 +7,6 @@ import Maybe.Extra
 import Model exposing (ApiResponse, Msg(..))
 import Poker.Card as Card exposing (Card)
 import Poker.HandOrCombo as HandOrCombo exposing (HandOrCombo)
-import Poker.Position exposing (Position(..))
-import Poker.Suit exposing (Suit(..))
-import Ports exposing (SharingType(..))
 import Process
 import RemoteData
 import Task

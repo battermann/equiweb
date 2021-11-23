@@ -3,7 +3,6 @@ module Views.Modal.Range exposing (SelectState(..), view)
 import Bootstrap.Alt.Modal as Modal
 import Bootstrap.Button as Button
 import Bootstrap.Dropdown as Dropdown
-import Bootstrap.Form as Form
 import Bootstrap.Grid as Grid
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
@@ -16,10 +15,9 @@ import Html.Attributes
 import Html.Events
 import Model exposing (Model, Msg(..))
 import Poker.Hand as Hand exposing (Hand)
-import Poker.Position as Position exposing (Position(..))
+import Poker.Position as Position
 import Poker.Ranges as Ranges
-import Poker.Suit as Suit exposing (Suit(..))
-import Ports exposing (SharingType(..))
+import Poker.Suit as Suit exposing (Suit)
 import Round
 import Svg
 import Svg.Attributes

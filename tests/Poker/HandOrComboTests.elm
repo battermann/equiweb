@@ -1,7 +1,6 @@
 module Poker.HandOrComboTests exposing (..)
 
 import Expect
-import Fuzz exposing (..)
 import List.Extra
 import Poker.Combo as Combo
 import Poker.Fuzzer as Fuzzer

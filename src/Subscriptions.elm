@@ -6,7 +6,7 @@ import Json.Decode as Decode
 import Keyboard
 import Model exposing (Model, Msg(..))
 import Poker.Position exposing (Position(..))
-import Ports exposing (SharingType(..))
+import Ports
 
 
 subscriptions : Model -> Sub Msg

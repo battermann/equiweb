@@ -7,7 +7,6 @@ import Model exposing (Msg(..))
 import Poker.Card exposing (Card)
 import Poker.Rank as Rank
 import Poker.Suit exposing (Suit(..))
-import Ports exposing (SharingType(..))
 import Svg
 import Svg.Attributes
 import Views.Icons

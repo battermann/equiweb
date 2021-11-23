@@ -7,10 +7,8 @@ import Html exposing (Html)
 import Html.Attributes
 import Model exposing (Model, Msg(..))
 import Poker.Card exposing (Card)
-import Poker.Position exposing (Position(..))
 import Poker.Rank as Rank
-import Poker.Suit as Suit exposing (Suit(..))
-import Ports exposing (SharingType(..))
+import Poker.Suit as Suit
 import Views.Card exposing (SelectState(..))
 
 

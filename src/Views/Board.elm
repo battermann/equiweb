@@ -3,11 +3,8 @@ module Views.Board exposing (view)
 import Bootstrap.Utilities.Flex as Flex
 import Html exposing (Html)
 import Html.Attributes
-import Model exposing (Msg(..))
+import Model exposing (Msg)
 import Poker.Card exposing (Card)
-import Poker.Position exposing (Position(..))
-import Poker.Suit exposing (Suit(..))
-import Ports exposing (SharingType(..))
 import Views.Card exposing (SelectState(..))
 
 

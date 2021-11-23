@@ -1,7 +1,6 @@
 module Poker.CardTests exposing (..)
 
 import Expect
-import Fuzz exposing (..)
 import List.Extra
 import Parser
 import Poker.Card as Card

@@ -5,7 +5,6 @@ import Poker.Combo as Combo exposing (Combo)
 import Random
 import Random.List
 import Shrink
-import Test exposing (..)
 
 
 combos : Fuzzer (List Combo)

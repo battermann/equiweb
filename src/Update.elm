@@ -19,7 +19,7 @@ import Poker.Combo as Combo
 import Poker.Hand as Hand exposing (Hand)
 import Poker.HandOrCombo as HandOrCombo
 import Poker.Position as Position exposing (Position(..))
-import Poker.Suit as Suit exposing (Suit(..))
+import Poker.Suit as Suit
 import Ports exposing (SharingType(..))
 import Random
 import RemoteData exposing (WebData)

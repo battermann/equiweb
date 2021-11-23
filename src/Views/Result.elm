@@ -10,10 +10,8 @@ import Bootstrap.Utilities.Spacing as Spacing
 import Html
 import Html.Attributes
 import Model exposing (Msg(..), ResultLine, SharingPopoverStates, SimulationResult)
-import Poker.Card as Card
 import Poker.HandOrCombo as HandOrCombo
 import Poker.Position as Position exposing (Position(..))
-import Poker.Suit exposing (Suit(..))
 import Ports exposing (SharingType(..))
 import Round
 import Views.Board

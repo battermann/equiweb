@@ -1,7 +1,6 @@
 module Poker.HandTests exposing (..)
 
 import Expect
-import Fuzz exposing (..)
 import Maybe.Extra
 import Parser
 import Poker.Card exposing (Card)
