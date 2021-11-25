@@ -73,7 +73,7 @@ formView model =
                                     ]
                                 ]
                             , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "5px 15px", Flex.wrap, Flex.alignItemsCenter ]
-                                [ Html.a [ Html.Attributes.href "https://discord.gg/JxgN7j7FNR", Html.Attributes.target "_blank" ] [ Html.img [ Html.Attributes.src "images/value-heavy-logo.png", Html.Attributes.height 36 ] [] ]
+                                [ Html.a [ Html.Attributes.href "https://discord.gg/497hDaX4YF", Html.Attributes.target "_blank" ] [ Html.img [ Html.Attributes.src "images/value-heavy-logo.png", Html.Attributes.height 36 ] [] ]
                                 , Kofi.button
                                 ]
                             ]
