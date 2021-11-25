@@ -65,14 +65,17 @@ formView model =
             [ Card.deck
                 ((Card.config [ Card.attrs [ Spacing.mb3, Html.Attributes.class "shadow" ] ]
                     |> Card.headerH2 []
-                        [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
+                        [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween, Flex.wrap, Html.Attributes.style "gap" "5px" ]
                             [ Html.div [ Flex.block, Flex.row, Flex.justifyBetween ]
                                 [ Html.a [ Html.Attributes.href (Url.Builder.absolute [] []), Flex.block, Flex.row, Flex.alignItemsStart ]
                                     [ Html.img [ Html.Attributes.src "images/chip-icon.svg", Html.Attributes.width 40 ] []
                                     , Html.div [ Html.Attributes.style "margin-top" "auto", Html.Attributes.style "margin-left" "7px", Html.Attributes.style "margin-bottom" "auto" ] [ Html.text "Equiweb" ]
                                     ]
                                 ]
-                            , Kofi.button
+                            , Html.div [ Flex.block, Flex.row, Html.Attributes.style "gap" "5px 15px", Flex.wrap, Flex.alignItemsCenter ]
+                                [ Html.a [ Html.Attributes.href "https://discord.gg/JxgN7j7FNR", Html.Attributes.target "_blank" ] [ Html.img [ Html.Attributes.src "images/value-heavy-logo.png", Html.Attributes.height 36 ] [] ]
+                                , Kofi.button
+                                ]
                             ]
                         ]
                     |> Card.block []
