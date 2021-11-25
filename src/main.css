@@ -24,6 +24,10 @@ i {
   color : #555555;
 }
 
+.round-corners {
+  border-radius: 0.25rem !important;
+}
+
 .tooltip-wrapper {
   padding:unset;
   background-color: unset;

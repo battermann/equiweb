@@ -289,6 +289,7 @@ rangeInputView model position result dropdownState ranges =
                         (validationFeedbackOutlineRange (Form.numberOfCombos position model.form) field
                             ++ [ Input.value field.value
                                , Input.onInput (RangeInput position)
+                               , Input.attrs [ Html.Attributes.class "round-corners" ]
                                ]
                         )
                     )
@@ -328,7 +329,7 @@ rangeInputView model position result dropdownState ranges =
                                     , Button.onClick (ShowRangeSelectionModal position)
                                     , Button.attrs ([ Html.Attributes.tabindex -1, Html.Attributes.type_ "button" ] ++ Popover.onHover popoverStates.openGrid (PopoverStateOpenGrid position))
                                     ]
-                                    [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 22 ] [] ]
+                                    [ Html.img [ Html.Attributes.src "images/apps_black_24dp.svg", Html.Attributes.height 18 ] [] ]
                                 )
                                 |> Popover.top
                                 |> Popover.content []
@@ -344,7 +345,7 @@ rangeInputView model position result dropdownState ranges =
                                         , Button.disabled (Form.rewritable field |> not)
                                         , Button.attrs [ Html.Attributes.tabindex -1 ]
                                         ]
-                                        [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 20 ] [] ]
+                                        [ Html.img [ Html.Attributes.src "images/auto_fix_high_black_24dp.svg", Html.Attributes.height 18 ] [] ]
                                     ]
                                 )
                                 |> Popover.top
